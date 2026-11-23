@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from src.repository import visits
-from src.services import notifications as notif_service
+import notification_service as notif_service
 
 
 # ---------- Create ----------
