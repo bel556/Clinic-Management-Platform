@@ -45,6 +45,7 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
         return False
     return all(results)
 
+
 #-------cancel------------
 
 def cancel_visit(conn, visit_id):
@@ -101,3 +102,5 @@ def search_visits_by_type(conn, visit_type):
             (visit_type,)
         )
         return cur.fetchall()
+
+
