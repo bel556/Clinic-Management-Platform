@@ -21,7 +21,7 @@ def _remove_from_queue(conn, visit_id, must_exist=True):
         doctor_id = row['doctor_id']
         removed_position = row['position']
         
-        visits.delete_visit(visit_id)
+        visits.delete_visit(conn, visit_id)
 
     visits.decrease_queue_positions(conn, doctor_id, removed_position=removed_position)
     return True
