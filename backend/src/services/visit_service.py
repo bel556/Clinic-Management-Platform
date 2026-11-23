@@ -43,6 +43,7 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     except Exception:
         return None
 
+    # 1. Create the visit
     visit_id = visits.create_visit(
         conn, patient_id, doctor_id, visit_date, visit_type, status=status
     )
@@ -50,9 +51,12 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     if not visit_id:
         return None
         
+    # 2. Add to Queue (only if they are actually checking in today)
+    if status in ('checked_in', 'present'):
+        visits.increase_queue_positions(conn, visit_id, doctor_id)
+        
     return visits.get_visit_by_id(conn, visit_id)
-
-
+                                   
 # ---------- Modify ----------
 
 def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
