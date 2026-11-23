@@ -235,3 +235,19 @@ def increase_queue_positions(conn, visit_id, doctor_id):
     except Exception:
         conn.rollback()
         return None
+
+
+def get_queue_info(conn, visit_id):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute('SELECT doctor_id, position FROM QUEUE WHERE visit_id = %s', (visit_id,))
+        return cur.fetchone()
+        
+def delete_from_queue(conn, visit_id):
+    try:
+        with conn.cursor() as cur:
+            cur.execute('DELETE FROM QUEUE WHERE visit_id = %s', (visit_id,))
+            conn.commit()
+            return True
+    except Exception:
+        conn.rollback()
+        return False
