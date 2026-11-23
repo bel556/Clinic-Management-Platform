@@ -1,6 +1,7 @@
 from src.repository import visits
 from src.repository import medicalnotes
 from src.repository import patients
+from src.repository import doctors
 import notification_service as notif_service
 
 
@@ -15,15 +16,17 @@ def _remove_from_queue(conn, visit_id, must_exist=True):
         if not row:
             if must_exist:
                 raise ValueError(f'Visit {visit_id} is not in the queue')
-            return False  # Not in queue, but that's okay for date changes
+            return False  
             
         doctor_id = row['doctor_id']
         removed_position = row['position']
         
-        cur.execute('DELETE FROM QUEUE WHERE visit_id = %s', (visit_id,))
+        visits.delete_visit(visit_id)
 
     visits.decrease_queue_positions(conn, doctor_id, removed_position=removed_position)
     return True
+
+
 # ---------- Create ----------
 
 def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
@@ -43,7 +46,6 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     except Exception:
         return None
 
-    # 1. Create the visit
     visit_id = visits.create_visit(
         conn, patient_id, doctor_id, visit_date, visit_type, status=status
     )
@@ -51,21 +53,17 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     if not visit_id:
         return None
         
-    # 2. Add to Queue (only if they are actually checking in today)
     if status in ('checked_in', 'present'):
         visits.increase_queue_positions(conn, visit_id, doctor_id)
         
     return visits.get_visit_by_id(conn, visit_id)
                                    
+
 # ---------- Modify ----------
 
 def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                       visit_type=None, status=None):
-    """
-    Update any combination of fields.
-    Handles queue removal if cancelled, sends notifications directly, 
-    and returns the updated record.
-    """
+    """Update fields, handle queues, send notifications."""
     existing = visits.get_visit_by_id(conn, visit_id)
     if not existing:
         return None
@@ -77,9 +75,6 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
         if visit_date is not None and visit_date != existing['visit_date']:
             if visits.modify_visit_date(conn, visit_id, visit_date):
                 updates_made = True
-                
-                # If the patient was in the queue for today, remove them 
-                # and shift the queue up, since their date is changing.
                 _remove_from_queue(conn, visit_id, must_exist=False)
                 
                 try:
@@ -92,15 +87,18 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
 
         # 2. Status Change (with Queue logic for cancellation)
         if status is not None and status != existing['status']:
-            if status == 'cancelled':
-                _remove_from_queue(conn, visit_id)  
-            
+            # Update status FIRST
             if visits.modify_visit_status(conn, visit_id, status):
                 updates_made = True
+                
+                # Handle Queue if cancelled
+                if status == 'cancelled':
+                    _remove_from_queue(conn, visit_id)
+                
                 try:
                     notif_service.create_notification(
                         conn, visit_id, 
-                        f'Status of Visit {visit_id} has been changed to  {status}'
+                        f'Status of Visit {visit_id} has been changed to {status}.'
                     )
                 except Exception:
                     pass
@@ -110,7 +108,6 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
             if visits.modify_visit_doctor(conn, visit_id, doctor_id):
                 updates_made = True
                 
-                # Fetch the doctor to get their name
                 doctor = doctors.get_doctor_by_id(conn, doctor_id)
                 doctor_name = doctor['full_name'] if doctor else f"ID {doctor_id}"
                 
@@ -121,6 +118,7 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                     )
                 except Exception:
                     pass
+
         # 4. Visit Type Change
         if visit_type is not None and visit_type != existing['visit_type']:
             if visits.modify_visit_type(conn, visit_id, visit_type):
@@ -128,61 +126,56 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                 try:
                     notif_service.create_notification(
                         conn, visit_id, 
-                        f'Type pf Visit {visit_id} has been changed to {visit_type}'
+                        f'Type of Visit {visit_id} has been changed to {visit_type}.'
                     )
                 except Exception:
                     pass
 
         if not updates_made:
-            return existing  # Return current state if nothing changed
+            return existing
+
+        # Handle the deletion if it was cancelled
+        if status == 'cancelled':
+            visits.delete_visit(conn, visit_id)
+            return {'visit_id': visit_id, 'status': 'cancelled', 'deleted': True}
 
         return visits.get_visit_by_id(conn, visit_id)
         
     except ValueError:
-        conn.rollback()  # Rolls back if _remove_from_queue raises ValueError
+        conn.rollback() 
         return None
     except Exception:
         conn.rollback()
         return None
 
+
 # ---------- Cancel ----------
 
 def cancel_visit(conn, visit_id, notify=True):
-    """
-    Cancel a visit by passing status='cancelled' to modify_visit_info.
-    """
     return modify_visit_info(conn, visit_id, status='cancelled')
 
 
 # ---------- Queue ----------
 
 def get_visit_queue_number(conn, visit_id):
-    """Get the queue position directly from the QUEUE table."""
     with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            'select position from QUEUE where visit_id = %s',
-            (visit_id,)
-        )
+        cur.execute('select position from QUEUE where visit_id = %s', (visit_id,))
         row = cur.fetchone()
         
     if not row:
         return None
-        
     return {'visit_id': visit_id, 'position': row['position']}
 
 
 # ---------- Search ----------
 
 def search_visits_by_patient(conn, patient_id):
-    """Use the patients API directly."""
     records = patients.get_patient_visits(conn, patient_id)
     return records if records else None
-
 
 def search_visits_by_status(conn, status, visit_day=None):
     records = visits.get_visits_by_status(conn, status, visit_day)
     return records if records else None
-
 
 def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'present', 'absent', 'checked_in', 'completed', 'cancelled')):
     results = []
@@ -197,9 +190,7 @@ def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'present', 'ab
     results.sort(key=lambda v: v['visit_date'])
     return results
 
-
 def search_visits_by_type(conn, visit_type):
-    """Use the newly added visits API directly."""
     records = visits.get_visits_by_type(conn, visit_type)
     return records if records else None
 
@@ -207,12 +198,10 @@ def search_visits_by_type(conn, visit_type):
 # ---------- Doctor view ----------
 
 def get_visit_details_for_doctor(conn, visit_id, doctor_id):
-    """Full visit + medical notes (via API), only if the visit belongs to the doctor."""
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
         return None
 
-    # Use the medicalnotes API directly as requested
     notes = medicalnotes.get_medical_notes_by_visit_id(conn, visit_id)
     visit['medical_notes'] = notes if notes else []
         
