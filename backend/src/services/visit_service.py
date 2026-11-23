@@ -1,7 +1,18 @@
-from datetime import datetime
-
 from src.repository import visits
+from src.repository import medicalnotes
+from src.repository import patients  
 import notification_service as notif_service
+
+
+# ---------- Helpers ----------
+
+def _remove_from_queue(conn, visit_id):
+    """Helper to remove a visit from the QUEUE table."""
+    with conn.cursor() as cur:
+        cur.execute('SELECT visit_id FROM QUEUE WHERE visit_id = %s', (visit_id,))
+        if not cur.fetchone():
+            raise ValueError(f'Visit {visit_id} is not in the queue')
+        cur.execute('DELETE FROM QUEUE WHERE visit_id = %s', (visit_id,))
 
 
 # ---------- Create ----------
@@ -10,7 +21,7 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
                                visit_type, status='scheduled'):
     """Create a visit only if an identical non-cancelled one does not exist."""
     try:
-        with conn.cursor(dictionary=True) as cur:
+        with conn.cursor() as cur:
             cur.execute(
                 'select visit_id from VISIT '
                 'where patient_id = %s and doctor_id = %s '
@@ -30,7 +41,6 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     if not visit_id:
         return None
         
-    # Return the full newly created visit record
     return visits.get_visit_by_id(conn, visit_id)
 
 
@@ -46,10 +56,7 @@ def modify_visit_status(conn, visit_id, new_status):
 
 def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                       visit_type=None, status=None):
-    """
-    Update any combination of fields via the repository's single-field
-    modify_* functions and return the updated record.
-    """
+    """Update any combination of fields and return the updated record."""
     results = []
     if visit_date is not None:
         results.append(visits.modify_visit_date(conn, visit_id, visit_date))
@@ -70,21 +77,34 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
 
 def cancel_visit(conn, visit_id, notify=True):
     """
-    Cancel a visit. By default creates a reception notification via the
-    notification service and returns the updated visit record.
+    Cancel a visit. Removes it from the QUEUE table.
+    Raises an error if the visit is not in the queue.
+    Sends a reception notification and returns the updated record.
     """
-    ok = visits.modify_visit_status(conn, visit_id, 'cancelled')
-    if not ok:
+    try:
+        _remove_from_queue(conn, visit_id)
+        
+        ok = visits.modify_visit_status(conn, visit_id, 'cancelled')
+        if not ok:
+            conn.rollback()
+            return None
+
+        conn.commit()
+
+        if notify:
+            try:
+                notif_service.create_notification(conn, visit_id, f'Visit {visit_id} has been cancelled.')
+            except Exception:
+                pass
+
+        return visits.get_visit_by_id(conn, visit_id)
+        
+    except ValueError:
+        conn.rollback()
         return None
-
-    if notify:
-        try:
-            notif_service.create_notification(conn, visit_id, f'Visit {visit_id} has been cancelled.')
-        except Exception:
-            # We suppress notification errors so the cancellation still succeeds
-            pass
-
-    return visits.get_visit_by_id(conn, visit_id)
+    except Exception:
+        conn.rollback()
+        return None
 
 
 # ---------- Queue ----------
@@ -107,18 +127,7 @@ def get_visit_queue_number(conn, visit_id):
 # ---------- Search ----------
 
 def search_visits_by_patient(conn, patient_id):
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            'select v.*, p.full_name as patient_name, e.full_name as doctor_name '
-            'from VISIT v '
-            'join PATIENT p on p.patient_id = v.patient_id '
-            'join DOCTOR d on d.doctor_id = v.doctor_id '
-            'join EMPLOYEE e on e.employee_id = d.employee_id '
-            'where v.patient_id = %s '
-            'order by v.visit_date desc',
-            (patient_id,)
-        )
-        records = cur.fetchall()
+    records = patients.get_patient_visits(conn, patient_id)
     return records if records else None
 
 
@@ -142,46 +151,29 @@ def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'present', 'ab
 
 
 def search_visits_by_type(conn, visit_type):
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            'select v.*, p.full_name as patient_name, e.full_name as doctor_name '
-            'from VISIT v '
-            'join PATIENT p on p.patient_id = v.patient_id '
-            'join DOCTOR d on d.doctor_id = v.doctor_id '
-            'join EMPLOYEE e on e.employee_id = d.employee_id '
-            'where v.visit_type = %s '
-            'order by v.visit_date',
-            (visit_type,)
-        )
-        records = cur.fetchall()
+    """I added the function to the repo."""
+    records = visits.get_visits_by_type(conn, visit_type)
     return records if records else None
 
 
 # ---------- Doctor view ----------
 
 def get_visit_details_for_doctor(conn, visit_id, doctor_id):
-    """Full visit + medical notes, only if the visit belongs to the doctor."""
+    """Full visit + medical notes , only if the visit belongs to the doctor."""
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
         return None
 
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            'select * from MEDICALNOTE where visit_id = %s',
-            (visit_id,)
-        )
-        visit['medical_notes'] = cur.fetchall()
+    notes = medicalnotes.get_medical_notes_by_visit_id(conn, visit_id)
+    visit['medical_notes'] = notes if notes else []
         
     return visit
 
 
-# ---------- Doctor-driven changes (send notifications) ----------
+# ---------- Doctor-driven changes ----------
 
 def doctor_reschedule_visit(conn, visit_id, doctor_id, new_visit_date):
-    """
-    Doctor reschedules a visit. Verifies ownership, updates the date,
-    sends a reception notification, and returns the updated visit.
-    """
+    """Doctor reschedules a visit..."""
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
         return None
@@ -202,20 +194,27 @@ def doctor_reschedule_visit(conn, visit_id, doctor_id, new_visit_date):
 
 
 def doctor_cancel_visit(conn, visit_id, doctor_id):
-    """
-    Doctor cancels a visit. Verifies ownership, marks it cancelled,
-    sends a reception notification, and returns the updated visit.
-    """
+    """Doctor cancels a visit..."""
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
         return None
 
-    if not visits.modify_visit_status(conn, visit_id, 'cancelled'):
-        return None
-
     try:
+        _remove_from_queue(conn, visit_id)
+        
+        if not visits.modify_visit_status(conn, visit_id, 'cancelled'):
+            conn.rollback()
+            return None
+            
+        conn.commit()
+
         notif_service.create_notification(conn, visit_id, f'Doctor cancelled visit {visit_id}.')
+        
+    except ValueError:
+        conn.rollback()
+        return None
     except Exception:
-        pass
+        conn.rollback()
+        return None
 
     return visits.get_visit_by_id(conn, visit_id)
