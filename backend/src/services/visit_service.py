@@ -2,27 +2,24 @@ from src.repository import visits
 from src.repository import medicalnotes
 from src.repository import patients
 from src.repository import doctors
-import notification_service as notif_service
+import notification_service as notif_service 
 
 
 # ---------- Helpers ----------
 
 def _remove_from_queue(conn, visit_id, must_exist=True):
     """Helper to remove a visit from the QUEUE table and shift remaining positions."""
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute('SELECT doctor_id, position FROM QUEUE WHERE visit_id = %s', (visit_id,))
-        row = cur.fetchone()
+    queue_info = visits.get_queue_info(conn, visit_id)
+    
+    if not queue_info:
+        if must_exist:
+            raise ValueError(f'Visit {visit_id} is not in the queue')
+        return False  
         
-        if not row:
-            if must_exist:
-                raise ValueError(f'Visit {visit_id} is not in the queue')
-            return False  
-            
-        doctor_id = row['doctor_id']
-        removed_position = row['position']
-        
-        visits.delete_visit(conn, visit_id)
-
+    doctor_id = queue_info['doctor_id']
+    removed_position = queue_info['position']
+    visits.delete_from_queue(conn, visit_id)
+    
     visits.decrease_queue_positions(conn, doctor_id, removed_position=removed_position)
     return True
 
@@ -87,11 +84,9 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
 
         # 2. Status Change (with Queue logic for cancellation)
         if status is not None and status != existing['status']:
-            # Update status FIRST
             if visits.modify_visit_status(conn, visit_id, status):
                 updates_made = True
                 
-                # Handle Queue if cancelled
                 if status == 'cancelled':
                     _remove_from_queue(conn, visit_id)
                 
@@ -136,8 +131,10 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
 
         # Handle the deletion if it was cancelled
         if status == 'cancelled':
-            visits.delete_visit(conn, visit_id)
-            return {'visit_id': visit_id, 'status': 'cancelled', 'deleted': True}
+            deleted = visits.delete_visit(conn, visit_id)
+            if deleted:
+                return {'visit_id': visit_id, 'status': 'cancelled', 'deleted': True}
+            return None # Deletion failed
 
         return visits.get_visit_by_id(conn, visit_id)
         
@@ -158,13 +155,11 @@ def cancel_visit(conn, visit_id, notify=True):
 # ---------- Queue ----------
 
 def get_visit_queue_number(conn, visit_id):
-    with conn.cursor(dictionary=True) as cur:
-        cur.execute('select position from QUEUE where visit_id = %s', (visit_id,))
-        row = cur.fetchone()
-        
-    if not row:
+    """Get the queue position using the repository API."""
+    queue_info = visits.get_queue_info(conn, visit_id)
+    if not queue_info:
         return None
-    return {'visit_id': visit_id, 'position': row['position']}
+    return {'visit_id': visit_id, 'position': queue_info['position']}
 
 
 # ---------- Search ----------
