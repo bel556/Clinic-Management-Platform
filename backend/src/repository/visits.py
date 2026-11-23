@@ -154,3 +154,17 @@ def delete_visit(conn, visit_id):
     except Exception:
         conn.rollback()
         return False
+
+def get_visits_by_type(conn, visit_type):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute(
+            'select v.*, p.full_name as patient_name, e.full_name as doctor_name '
+            'from VISIT v '
+            'join PATIENT p on p.patient_id = v.patient_id '
+            'join DOCTOR d on d.doctor_id = v.doctor_id '
+            'join EMPLOYEE e on e.employee_id = d.employee_id '
+            'where v.visit_type = %s '
+            'order by v.visit_date',
+            (visit_type,)
+        )
+        return cur.fetchall()
