@@ -1,0 +1,442 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* --------------------------------- sidebar -------------------------------- */
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  width: var(--sidebar-w);
+  height: 100vh;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px 12px;
+  background: #fff;
+  border-right: 1px solid var(--border-soft);
+  z-index: 30;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 6px 0;
+  margin-bottom: 20px;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--teal);
+  color: #fff;
+  flex: none;
+}
+
+.brandName {
+  font-size: 15px;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  color: #123c38;
+}
+
+.sectionLabel {
+  padding: 0 10px;
+  margin-bottom: 6px;
+  font-size: 9px;
+  font-weight: 640;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.navItem:hover {
+  background: #f7f6fd;
+  color: var(--text-2);
+}
+
+.navItemActive,
+.navItemActive:hover {
+  background: var(--teal);
+  color: #fff;
+  font-weight: 560;
+}
+
+.navIcon {
+  display: inline-flex;
+  color: inherit;
+  opacity: 0.85;
+  flex: none;
+}
+
+.navLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #2e6bdb;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 620;
+}
+
+.sidebarSpacer {
+  flex: 1;
+}
+
+.sidebarFoot {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.switchLink {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  color: var(--muted-2);
+  font-size: 10.5px;
+  font-weight: 540;
+}
+
+.switchLink:hover {
+  background: #f7f6fd;
+  color: var(--text-2);
+}
+
+/* ---------------------------------- topbar -------------------------------- */
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: var(--topbar-h);
+  flex: none;
+  padding: 0 22px;
+  background: #fff;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.clinic {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.clinicIcon {
+  color: var(--teal);
+  display: inline-flex;
+}
+
+.clinicName {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.clinicMeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--muted-2);
+}
+
+.stamp {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.topRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.bell:hover {
+  background: var(--panel);
+  color: var(--text-2);
+}
+
+.bellDot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #2e6bdb;
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 640;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #fff;
+}
+
+.userChip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border-soft);
+}
+
+.userMeta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.userName {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.userRole {
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.topAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.topAction:hover {
+  background: var(--panel);
+  color: var(--text-2);
+}
+
+/* --------------------------------- content -------------------------------- */
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 22px 24px 44px;
+}
+
+.contentInner {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* -------------------------------- page head ------------------------------- */
+
+.pageHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pageHeadMain {
+  min-width: 0;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 640;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.pageDesc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.breadcrumb a:hover {
+  color: var(--teal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.crumbCurrent {
+  color: var(--text-2);
+  font-weight: 560;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  font-weight: 540;
+  color: var(--muted);
+}
+
+.backLink:hover {
+  color: var(--teal);
+}
+
+@media (max-width: 940px) {
+  :root {
+    --sidebar-w: 64px;
+  }
+
+  .sidebar {
+    padding: 14px 8px;
+    align-items: center;
+  }
+
+  .brandName,
+  .sectionLabel,
+  .navLabel,
+  .switchLink span {
+    display: none;
+  }
+
+  .brand {
+    padding: 0;
+    margin-bottom: 16px;
+  }
+
+  .nav {
+    width: 100%;
+  }
+
+  .navItem {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .navBadge {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 12px;
+    height: 12px;
+    font-size: 8px;
+  }
+
+  .sidebarFoot {
+    width: 100%;
+  }
+
+  .switchLink {
+    justify-content: center;
+  }
+
+  .content {
+    padding: 18px 16px 36px;
+  }
+
+  .topbar {
+    padding: 0 14px;
+  }
+
+  .clinicMeta,
+  .userMeta {
+    display: none;
+  }
+}

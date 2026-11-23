@@ -1,0 +1,232 @@
+.listCard {
+  padding: 12px;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px 8px;
+}
+
+.listLabel {
+  font-size: 9.5px;
+  font-weight: 620;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.doctorRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  text-align: left;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.doctorRow:hover {
+  background: #fbfaff;
+}
+
+.doctorRowActive {
+  border-left-color: var(--teal);
+  background: #f7f7ff;
+}
+
+.doctorName {
+  font-size: 12.5px;
+  font-weight: 560;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doctorMeta {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.doctorRight {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.queueText {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.rosterCard {
+  margin-top: 8px;
+  padding: 10px 11px;
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+  border: 1px solid #eeecfa;
+  font-size: 10.5px;
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.rosterCard strong {
+  display: block;
+  color: var(--text-2);
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+/* ------------------------------ availability ------------------------------ */
+
+.gridCard {
+  overflow: hidden;
+}
+
+.gridHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px 10px;
+}
+
+.gridTitle {
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+
+.gridMeta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.gridTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gridWrap {
+  overflow-x: auto;
+}
+
+.grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 540px;
+}
+
+.grid th {
+  padding: 8px 10px;
+  font-size: 9px;
+  font-weight: 620;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  background: var(--panel-2);
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+  text-align: center;
+}
+
+.grid th:first-child {
+  text-align: left;
+}
+
+.grid td {
+  padding: 7px 10px;
+  text-align: center;
+  font-size: 10.5px;
+  border-bottom: 1px solid #f4f3fa;
+}
+
+.timeCell {
+  text-align: left !important;
+  font-size: 10.5px;
+  color: var(--text-2);
+  font-weight: 540;
+  white-space: nowrap;
+  background: #fff;
+}
+
+.cellBooked {
+  color: var(--muted);
+}
+
+.cellAvailable {
+  color: var(--green);
+  font-weight: 560;
+}
+
+.cellRecess {
+  color: var(--violet);
+  font-size: 8px;
+  font-weight: 620;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.dayCellToday {
+  background: #fbfaff;
+}
+
+.gridFoot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 10px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legendDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.legendBooked {
+  background: var(--muted-2);
+}
+
+.legendAvailable {
+  background: var(--green);
+}
+
+.legendRecess {
+  background: var(--violet);
+}
+
+@media (max-width: 780px) {
+  .doctorRow {
+    padding: 9px 6px;
+  }
+}

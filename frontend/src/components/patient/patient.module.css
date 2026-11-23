@@ -1,0 +1,200 @@
+.headerCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+.headerName {
+  font-size: 20px;
+  font-weight: 640;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.headerMeta {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.headerStats {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.statLabel {
+  font-size: 9px;
+  font-weight: 620;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.statValue {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 560;
+  color: var(--text-2);
+}
+
+.statValueTeal {
+  color: var(--teal);
+}
+
+.kvRow {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.kvLabel {
+  color: var(--muted);
+}
+
+.kvValue {
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.blockLabel {
+  font-size: 9px;
+  font-weight: 620;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin-bottom: 5px;
+}
+
+.bulletList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.bulletList li {
+  position: relative;
+  padding-left: 11px;
+}
+
+.bulletList li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--muted-2);
+}
+
+.vitalsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.vitalCell {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: 7px 9px;
+  background: #fff;
+}
+
+.vitalValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.vitalUnit {
+  font-size: 9.5px;
+  color: var(--muted-2);
+  margin-left: 2px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.formGridFull {
+  grid-column: 1 / -1;
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 14px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.visitMeta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.visitMetaSub {
+  font-size: 10px;
+  color: var(--muted-2);
+}
+
+.patientCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.emptyWrap {
+  padding: 6px 0;
+}
+
+@media (max-width: 780px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .headerStats {
+    margin-left: 0;
+  }
+
+  .kvRow {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+}
