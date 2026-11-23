@@ -76,22 +76,14 @@ def cancel_visit(conn, visit_id, notify=True):
 # ---------- Queue ----------
 
 def get_visit_queue_number(conn, visit_id):
-    """Position of a visit among its doctor's same-day non-cancelled visits."""
-    visit = visits.get_visit_by_id(conn, visit_id)
-    if not visit or visit['status'] == 'cancelled':
-        return 0
-
+    """Get the queue position directly from the QUEUE table."""
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
-            "select count(*) as queue_num from VISIT "
-            "where doctor_id = %s "
-            "and date(visit_date) = date(%s) "
-            "and status != 'cancelled' "
-            "and visit_date <= %s",
-            (visit['doctor_id'], visit['visit_date'], visit['visit_date'])
+            'select position from QUEUE where visit_id = %s',
+            (visit_id,)
         )
         row = cur.fetchone()
-        return row['queue_num'] if row else 0
+        return row['position'] if row else 0
 
 
 # ---------- Search ----------
@@ -115,8 +107,8 @@ def search_visits_by_status(conn, status, visit_day=None):
     return visits.get_visits_by_status(conn, status, visit_day)
 
 
-def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'in_progress',
-                                                     'completed', 'cancelled')):
+def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'present', 'absent', 'checked_in', 'completed', 'cancelled')):
+    """Matches the ENUM statuses from the database diagram."""
     results = []
     for s in statuses:
         results.extend(visits.get_visits_by_status(conn, s, visit_day))
@@ -148,8 +140,9 @@ def get_visit_details_for_doctor(conn, visit_id, doctor_id):
         return None
 
     with conn.cursor(dictionary=True) as cur:
+        # Corrected table name to MEDICALNOTE and removed non-existent note_date
         cur.execute(
-            'select * from MEDICAL_NOTE where visit_id = %s order by note_date desc',
+            'select * from MEDICALNOTE where visit_id = %s',
             (visit_id,)
         )
         visit['medical_notes'] = cur.fetchall()
