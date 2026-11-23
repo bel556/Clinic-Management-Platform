@@ -205,3 +205,33 @@ def decrease_queue_positions(conn, doctor_id, removed_position=None):
     except Exception:
         conn.rollback()
         return None
+
+def increase_queue_positions(conn, visit_id, doctor_id):
+    """
+    Adds a visit to the end of the doctor's queue.
+    Returns a dict with the new position, or None on failure.
+    """
+    try:
+        with conn.cursor(dictionary=True) as cur:
+            # 1. Find the current highest position for this doctor
+            cur.execute(
+                'SELECT MAX(position) as max_pos FROM QUEUE WHERE doctor_id = %s', 
+                (doctor_id,)
+            )
+            row = cur.fetchone()
+            
+            # If queue is empty (max_pos is None), start at 1. Otherwise, add 1.
+            next_position = (row['max_pos'] or 0) + 1
+            
+            # 2. Insert the new visit into the queue
+            cur.execute(
+                'INSERT INTO QUEUE (doctor_id, visit_id, position) VALUES (%s, %s, %s)',
+                (doctor_id, visit_id, next_position)
+            )
+            conn.commit()
+            
+            return {'visit_id': visit_id, 'position': next_position}
+            
+    except Exception:
+        conn.rollback()
+        return None
