@@ -1,0 +1,65 @@
+:root {
+  /* Brand */
+  --teal: #00685f;
+  --teal-dark: #00544d;
+  --teal-deep: #003d38;
+  --teal-soft: #e6f4f2;
+  --teal-border: #bfe3df;
+
+  /* Surfaces */
+  --bg: #faf8ff;
+  --bg-app: #f6f4fb;
+  --panel: #f2f3ff;
+  --panel-2: #f7f6fd;
+  --white: #ffffff;
+
+  /* Lines */
+  --border: #e2e7ff;
+  --border-soft: #ecebf6;
+  --border-strong: #d5d9f2;
+
+  /* Text */
+  --text: #101828;
+  --text-2: #344054;
+  --muted: #667085;
+  --muted-2: #98a2b3;
+
+  /* Status */
+  --green: #027a48;
+  --green-bg: #ecfdf3;
+  --green-border: #abefc6;
+  --blue: #175cd3;
+  --blue-bg: #eff8ff;
+  --blue-border: #b2ddff;
+  --red: #b42318;
+  --red-bg: #fef3f2;
+  --red-border: #fecdca;
+  --amber: #b54708;
+  --amber-bg: #fffaeb;
+  --amber-border: #fedf89;
+  --violet: #5925dc;
+  --violet-bg: #f4f3ff;
+
+  /* Shape */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+
+  /* Effects */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 24px 48px -12px rgba(16, 24, 40, 0.22);
+  --ring: 0 0 0 3px rgba(0, 104, 95, 0.14);
+
+  /* Type */
+  --font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Layout */
+  --sidebar-w: 236px;
+  --topbar-h: 52px;
+  --content-max: 1120px;
+}

@@ -1,0 +1,137 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(900px 420px at 20% 0%, #eef7f5 0%, transparent 60%),
+    radial-gradient(700px 420px at 90% 100%, #eef1ff 0%, transparent 60%),
+    var(--bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 424px;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  padding: 26px 26px 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--teal);
+  color: #fff;
+  flex: none;
+}
+
+.brandName {
+  font-size: 16px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  color: #123c38;
+  line-height: 1.2;
+}
+
+.brandSub {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.title {
+  font-size: 21px;
+  font-weight: 640;
+  letter-spacing: -0.018em;
+}
+
+.subtitle {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.role {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: #fff;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.role:hover {
+  border-color: var(--teal-border);
+  background: #fbfdfc;
+  transform: translateY(-1px);
+}
+
+.roleIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  flex: none;
+}
+
+.roleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.roleTitle {
+  font-size: 13px;
+  font-weight: 620;
+  color: var(--text);
+}
+
+.roleMeta {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.roleArrow {
+  margin-left: auto;
+  color: var(--muted-2);
+}
+
+.footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  color: var(--muted-2);
+}

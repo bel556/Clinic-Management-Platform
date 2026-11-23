@@ -1,0 +1,385 @@
+.timeCell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.queueTag {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.patientCell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.patientName {
+  color: var(--text);
+  font-weight: 560;
+}
+
+.subtle {
+  font-size: 10px;
+  color: var(--muted-2);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.bookedActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+/* --------------------------------- ticket --------------------------------- */
+
+.ticket {
+  width: 100%;
+  max-width: 292px;
+  background: #fff;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 16px 16px 12px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.ticketBrand {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--text);
+}
+
+.ticketBrandSub {
+  margin-top: 3px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.ticketDivider {
+  border: 0;
+  border-top: 1px dashed var(--border-strong);
+  margin: 11px 0;
+}
+
+.ticketLabel {
+  font-size: 8.5px;
+  font-weight: 620;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.ticketQueue {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.1;
+  margin: 2px 0 1px;
+}
+
+.ticketCheckedIn {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.ticketRows {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ticketRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ticketRowKey {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.ticketRowValue {
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+.barcode {
+  height: 26px;
+  margin: 12px 0 4px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    #101828 0 1px,
+    transparent 1px 3px,
+    #101828 3px 5px,
+    transparent 5px 6px,
+    #101828 6px 7px,
+    transparent 7px 10px
+  );
+}
+
+.barcodeText {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.ticketInstructions {
+  margin-top: 9px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.printerRow {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-2);
+  font-weight: 540;
+}
+
+.printerMeta {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 8.5px;
+  color: var(--muted-2);
+}
+
+.printerReady {
+  color: var(--green);
+  font-weight: 620;
+  letter-spacing: 0.06em;
+}
+
+/* ------------------------------- detail cards ------------------------------ */
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailLabel {
+  font-size: 9px;
+  font-weight: 620;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.detailValue {
+  min-height: 33px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+  border: 1px solid #eeecfa;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.detailValuePlain {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: block;
+}
+
+.summaryGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.summaryLabel {
+  font-size: 8.5px;
+  font-weight: 620;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  margin-bottom: 3px;
+}
+
+.summaryValue {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: #f4f4fd;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+
+/* --------------------------------- form ----------------------------------- */
+
+.formCard {
+  padding: 16px 18px;
+}
+
+.typeRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.typePill {
+  height: 27px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 560;
+}
+
+.typePill:hover {
+  border-color: var(--border-strong);
+  color: var(--text-2);
+}
+
+.typePillActive,
+.typePillActive:hover {
+  background: var(--panel);
+  border-color: #d9d6f5;
+  color: var(--teal);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.formGridFull {
+  grid-column: 1 / -1;
+}
+
+.patientBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  background: #f4f4fd;
+  font-size: 11.5px;
+  color: var(--text-2);
+  flex-wrap: wrap;
+}
+
+.patientBannerId {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.formFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* --------------------------------- success -------------------------------- */
+
+.checkedInWrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+.successIcon {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.successTitle {
+  font-size: 22px;
+  font-weight: 620;
+  letter-spacing: -0.015em;
+}
+
+.ticketPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 16px;
+}
+
+.ticketPanelHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 560;
+  color: var(--text-2);
+}
+
+@media (max-width: 880px) {
+  .checkedInWrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
