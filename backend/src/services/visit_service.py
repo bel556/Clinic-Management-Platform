@@ -10,7 +10,7 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
                                visit_type, status='scheduled'):
     """Create a visit only if an identical non-cancelled one does not exist."""
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(dictionary=True) as cur:
             cur.execute(
                 'select visit_id from VISIT '
                 'where patient_id = %s and doctor_id = %s '
@@ -23,23 +23,32 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     except Exception:
         return None
 
-    return visits.create_visit(
+    visit_id = visits.create_visit(
         conn, patient_id, doctor_id, visit_date, visit_type, status=status
     )
+    
+    if not visit_id:
+        return None
+        
+    # Return the full newly created visit record
+    return visits.get_visit_by_id(conn, visit_id)
 
 
 # ---------- Modify ----------
 
 def modify_visit_status(conn, visit_id, new_status):
-    """Modify visit status via repository; notification sent by callers that need it."""
-    return visits.modify_visit_status(conn, visit_id, new_status)
+    """Modify visit status via repository and return updated record."""
+    success = visits.modify_visit_status(conn, visit_id, new_status)
+    if not success:
+        return None
+    return visits.get_visit_by_id(conn, visit_id)
 
 
 def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                       visit_type=None, status=None):
     """
     Update any combination of fields via the repository's single-field
-    modify_* functions.
+    modify_* functions and return the updated record.
     """
     results = []
     if visit_date is not None:
@@ -51,9 +60,10 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
     if status is not None:
         results.append(visits.modify_visit_status(conn, visit_id, status))
 
-    if not results:
-        return False
-    return all(results)
+    if not results or not all(results):
+        return None
+
+    return visits.get_visit_by_id(conn, visit_id)
 
 
 # ---------- Cancel ----------
@@ -61,16 +71,20 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
 def cancel_visit(conn, visit_id, notify=True):
     """
     Cancel a visit. By default creates a reception notification via the
-    notification service so the desk is aware.
+    notification service and returns the updated visit record.
     """
     ok = visits.modify_visit_status(conn, visit_id, 'cancelled')
     if not ok:
-        return False
+        return None
 
     if notify:
-        _notify_reception(conn, visit_id,
-                          f'Visit {visit_id} has been cancelled.')
-    return True
+        try:
+            notif_service.create_notification(conn, visit_id, f'Visit {visit_id} has been cancelled.')
+        except Exception:
+            # We suppress notification errors so the cancellation still succeeds
+            pass
+
+    return visits.get_visit_by_id(conn, visit_id)
 
 
 # ---------- Queue ----------
@@ -83,7 +97,11 @@ def get_visit_queue_number(conn, visit_id):
             (visit_id,)
         )
         row = cur.fetchone()
-        return row['position'] if row else 0
+        
+    if not row:
+        return None
+        
+    return {'visit_id': visit_id, 'position': row['position']}
 
 
 # ---------- Search ----------
@@ -100,18 +118,25 @@ def search_visits_by_patient(conn, patient_id):
             'order by v.visit_date desc',
             (patient_id,)
         )
-        return cur.fetchall()
+        records = cur.fetchall()
+    return records if records else None
 
 
 def search_visits_by_status(conn, status, visit_day=None):
-    return visits.get_visits_by_status(conn, status, visit_day)
+    records = visits.get_visits_by_status(conn, status, visit_day)
+    return records if records else None
 
 
 def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'present', 'absent', 'checked_in', 'completed', 'cancelled')):
-    """Matches the ENUM statuses from the database diagram."""
     results = []
     for s in statuses:
-        results.extend(visits.get_visits_by_status(conn, s, visit_day))
+        records = visits.get_visits_by_status(conn, s, visit_day)
+        if records:
+            results.extend(records)
+            
+    if not results:
+        return None
+        
     results.sort(key=lambda v: v['visit_date'])
     return results
 
@@ -128,7 +153,8 @@ def search_visits_by_type(conn, visit_type):
             'order by v.visit_date',
             (visit_type,)
         )
-        return cur.fetchall()
+        records = cur.fetchall()
+    return records if records else None
 
 
 # ---------- Doctor view ----------
@@ -140,59 +166,56 @@ def get_visit_details_for_doctor(conn, visit_id, doctor_id):
         return None
 
     with conn.cursor(dictionary=True) as cur:
-        # Corrected table name to MEDICALNOTE and removed non-existent note_date
         cur.execute(
             'select * from MEDICALNOTE where visit_id = %s',
             (visit_id,)
         )
         visit['medical_notes'] = cur.fetchall()
+        
     return visit
 
 
 # ---------- Doctor-driven changes (send notifications) ----------
 
-def _notify_reception(conn, visit_id, message):
-    """
-    Wrapper around the notification service so failures don't silently
-    break the caller's flow.
-    """
-    try:
-        return notif_service.create_notification(conn, visit_id, message)
-    except (ValueError, RuntimeError):
-        return None
-
-
 def doctor_reschedule_visit(conn, visit_id, doctor_id, new_visit_date):
     """
     Doctor reschedules a visit. Verifies ownership, updates the date,
-    and sends a reception notification via the notification service.
+    sends a reception notification, and returns the updated visit.
     """
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
-        return False
+        return None
 
     old_date = visit['visit_date']
     if not visits.modify_visit_date(conn, visit_id, new_visit_date):
-        return False
+        return None
 
-    _notify_reception(
-        conn, visit_id,
-        f'Doctor changed visit {visit_id} date from {old_date} to {new_visit_date}.'
-    )
-    return True
+    try:
+        notif_service.create_notification(
+            conn, visit_id,
+            f'Doctor changed visit {visit_id} date from {old_date} to {new_visit_date}.'
+        )
+    except Exception:
+        pass
+
+    return visits.get_visit_by_id(conn, visit_id)
 
 
 def doctor_cancel_visit(conn, visit_id, doctor_id):
     """
     Doctor cancels a visit. Verifies ownership, marks it cancelled,
-    and sends a reception notification via the notification service.
+    sends a reception notification, and returns the updated visit.
     """
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
-        return False
+        return None
 
     if not visits.modify_visit_status(conn, visit_id, 'cancelled'):
-        return False
+        return None
 
-    _notify_reception(conn, visit_id, f'Doctor cancelled visit {visit_id}.')
-    return True
+    try:
+        notif_service.create_notification(conn, visit_id, f'Doctor cancelled visit {visit_id}.')
+    except Exception:
+        pass
+
+    return visits.get_visit_by_id(conn, visit_id)
