@@ -82,7 +82,7 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                 try:
                     notif_service.create_notification(
                         conn, visit_id, 
-                        f'Visit {visit_id} has been {status}'
+                        f'Status of Visit {visit_id} has been changed to  {status}'
                     )
                 except Exception:
                     pass
@@ -91,11 +91,15 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
         if doctor_id is not None and doctor_id != existing['doctor_id']:
             if visits.modify_visit_doctor(conn, visit_id, doctor_id):
                 updates_made = True
+                
+                # Fetch the doctor to get their name
                 doctor = doctors.get_doctor_by_id(conn, doctor_id)
+                doctor_name = doctor['full_name'] if doctor else f"ID {doctor_id}"
+                
                 try:
                     notif_service.create_notification(
                         conn, visit_id, 
-                        f'doctor of Visit {visit_id} has been changed to dr {doctor_id} {doctor}'
+                        f'Doctor for Visit {visit_id} has been changed to Dr. {doctor_name}.'
                     )
                 except Exception:
                     pass
