@@ -6,15 +6,24 @@ import notification_service as notif_service
 
 # ---------- Helpers ----------
 
-def _remove_from_queue(conn, visit_id):
-    """Helper to remove a visit from the QUEUE table."""
-    with conn.cursor() as cur:
-        cur.execute('SELECT visit_id FROM QUEUE WHERE visit_id = %s', (visit_id,))
-        if not cur.fetchone():
-            raise ValueError(f'Visit {visit_id} is not in the queue')
+def _remove_from_queue(conn, visit_id, must_exist=True):
+    """Helper to remove a visit from the QUEUE table and shift remaining positions."""
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute('SELECT doctor_id, position FROM QUEUE WHERE visit_id = %s', (visit_id,))
+        row = cur.fetchone()
+        
+        if not row:
+            if must_exist:
+                raise ValueError(f'Visit {visit_id} is not in the queue')
+            return False  # Not in queue, but that's okay for date changes
+            
+        doctor_id = row['doctor_id']
+        removed_position = row['position']
+        
         cur.execute('DELETE FROM QUEUE WHERE visit_id = %s', (visit_id,))
 
-
+    visits.decrease_queue_positions(conn, doctor_id, removed_position=removed_position)
+    return True
 # ---------- Create ----------
 
 def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
@@ -64,6 +73,11 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
         if visit_date is not None and visit_date != existing['visit_date']:
             if visits.modify_visit_date(conn, visit_id, visit_date):
                 updates_made = True
+                
+                # If the patient was in the queue for today, remove them 
+                # and shift the queue up, since their date is changing.
+                _remove_from_queue(conn, visit_id, must_exist=False)
+                
                 try:
                     notif_service.create_notification(
                         conn, visit_id, 
@@ -75,7 +89,7 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
         # 2. Status Change (with Queue logic for cancellation)
         if status is not None and status != existing['status']:
             if status == 'cancelled':
-                _remove_from_queue(conn, visit_id)  # Raises ValueError if not in queue
+                _remove_from_queue(conn, visit_id)  
             
             if visits.modify_visit_status(conn, visit_id, status):
                 updates_made = True
