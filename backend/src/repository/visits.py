@@ -168,3 +168,40 @@ def get_visits_by_type(conn, visit_type):
             (visit_type,)
         )
         return cur.fetchall()
+
+def decrease_queue_positions(conn, doctor_id, removed_position=None):
+    """
+    Decreases the queue position by 1 for all visits belonging to a specific doctor.
+    
+    :param removed_position: If provided, only decreases positions that 
+                             are strictly greater than this number (e.g., if patient 
+                             at position 3 is removed, positions 4, 5, etc. move up).
+                             If not provided, it decreases the entire queue by 1.
+    """
+    try:
+        with conn.cursor() as cur:
+            if removed_position is not None:
+                cur.execute(
+                    'UPDATE QUEUE '
+                    'SET position = position - 1 '
+                    'WHERE doctor_id = %s AND position > %s',
+                    (doctor_id, removed_position)
+                )
+            else:
+                cur.execute(
+                    'UPDATE QUEUE '
+                    'SET position = position - 1 '
+                    'WHERE doctor_id = %s',
+                    (doctor_id,)
+                )
+            
+            conn.commit()
+            return {
+                'doctor_id': doctor_id,
+                'updated_rows': cur.rowcount,
+                'removed_position_threshold': removed_position
+            }
+            
+    except Exception:
+        conn.rollback()
+        return None
