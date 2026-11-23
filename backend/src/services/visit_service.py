@@ -1,6 +1,6 @@
 from src.repository import visits
 from src.repository import medicalnotes
-from src.repository import patients  
+from src.repository import patients
 import notification_service as notif_service
 
 
@@ -46,65 +46,90 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
 
 # ---------- Modify ----------
 
-def modify_visit_status(conn, visit_id, new_status):
-    """Modify visit status via repository and return updated record."""
-    success = visits.modify_visit_status(conn, visit_id, new_status)
-    if not success:
-        return None
-    return visits.get_visit_by_id(conn, visit_id)
-
-
 def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                       visit_type=None, status=None):
-    """Update any combination of fields and return the updated record."""
-    results = []
-    if visit_date is not None:
-        results.append(visits.modify_visit_date(conn, visit_id, visit_date))
-    if doctor_id is not None:
-        results.append(visits.modify_visit_doctor(conn, visit_id, doctor_id))
-    if visit_type is not None:
-        results.append(visits.modify_visit_type(conn, visit_id, visit_type))
-    if status is not None:
-        results.append(visits.modify_visit_status(conn, visit_id, status))
-
-    if not results or not all(results):
+    """
+    Update any combination of fields.
+    Handles queue removal if cancelled, sends notifications directly, 
+    and returns the updated record.
+    """
+    existing = visits.get_visit_by_id(conn, visit_id)
+    if not existing:
         return None
 
-    return visits.get_visit_by_id(conn, visit_id)
+    updates_made = False
 
+    try:
+        # 1. Date Change
+        if visit_date is not None and visit_date != existing['visit_date']:
+            if visits.modify_visit_date(conn, visit_id, visit_date):
+                updates_made = True
+                try:
+                    notif_service.create_notification(
+                        conn, visit_id, 
+                        f'Doctor changed visit {visit_id} date from {existing["visit_date"]} to {visit_date}.'
+                    )
+                except Exception:
+                    pass
+
+        # 2. Status Change (with Queue logic for cancellation)
+        if status is not None and status != existing['status']:
+            if status == 'cancelled':
+                _remove_from_queue(conn, visit_id)  # Raises ValueError if not in queue
+            
+            if visits.modify_visit_status(conn, visit_id, status):
+                updates_made = True
+                try:
+                    notif_service.create_notification(
+                        conn, visit_id, 
+                        f'Visit {visit_id} has been {status}'
+                    )
+                except Exception:
+                    pass
+
+        # 3. Doctor Change
+        if doctor_id is not None and doctor_id != existing['doctor_id']:
+            if visits.modify_visit_doctor(conn, visit_id, doctor_id):
+                updates_made = True
+                doctor = doctors.get_doctor_by_id(conn, doctor_id)
+                try:
+                    notif_service.create_notification(
+                        conn, visit_id, 
+                        f'doctor of Visit {visit_id} has been changed to dr {doctor_id} {doctor}'
+                    )
+                except Exception:
+                    pass
+        # 4. Visit Type Change
+        if visit_type is not None and visit_type != existing['visit_type']:
+            if visits.modify_visit_type(conn, visit_id, visit_type):
+                updates_made = True
+                try:
+                    notif_service.create_notification(
+                        conn, visit_id, 
+                        f'Type pf Visit {visit_id} has been changed to {visit_type}'
+                    )
+                except Exception:
+                    pass
+
+        if not updates_made:
+            return existing  # Return current state if nothing changed
+
+        return visits.get_visit_by_id(conn, visit_id)
+        
+    except ValueError:
+        conn.rollback()  # Rolls back if _remove_from_queue raises ValueError
+        return None
+    except Exception:
+        conn.rollback()
+        return None
 
 # ---------- Cancel ----------
 
 def cancel_visit(conn, visit_id, notify=True):
     """
-    Cancel a visit. Removes it from the QUEUE table.
-    Raises an error if the visit is not in the queue.
-    Sends a reception notification and returns the updated record.
+    Cancel a visit by passing status='cancelled' to modify_visit_info.
     """
-    try:
-        _remove_from_queue(conn, visit_id)
-        
-        ok = visits.modify_visit_status(conn, visit_id, 'cancelled')
-        if not ok:
-            conn.rollback()
-            return None
-
-        conn.commit()
-
-        if notify:
-            try:
-                notif_service.create_notification(conn, visit_id, f'Visit {visit_id} has been cancelled.')
-            except Exception:
-                pass
-
-        return visits.get_visit_by_id(conn, visit_id)
-        
-    except ValueError:
-        conn.rollback()
-        return None
-    except Exception:
-        conn.rollback()
-        return None
+    return modify_visit_info(conn, visit_id, status='cancelled')
 
 
 # ---------- Queue ----------
@@ -127,6 +152,7 @@ def get_visit_queue_number(conn, visit_id):
 # ---------- Search ----------
 
 def search_visits_by_patient(conn, patient_id):
+    """Use the patients API directly."""
     records = patients.get_patient_visits(conn, patient_id)
     return records if records else None
 
@@ -151,7 +177,7 @@ def search_visits_by_date(conn, visit_day, statuses=('scheduled', 'present', 'ab
 
 
 def search_visits_by_type(conn, visit_type):
-    """I added the function to the repo."""
+    """Use the newly added visits API directly."""
     records = visits.get_visits_by_type(conn, visit_type)
     return records if records else None
 
@@ -159,62 +185,13 @@ def search_visits_by_type(conn, visit_type):
 # ---------- Doctor view ----------
 
 def get_visit_details_for_doctor(conn, visit_id, doctor_id):
-    """Full visit + medical notes , only if the visit belongs to the doctor."""
+    """Full visit + medical notes (via API), only if the visit belongs to the doctor."""
     visit = visits.get_visit_by_id(conn, visit_id)
     if not visit or visit['doctor_id'] != doctor_id:
         return None
 
+    # Use the medicalnotes API directly as requested
     notes = medicalnotes.get_medical_notes_by_visit_id(conn, visit_id)
     visit['medical_notes'] = notes if notes else []
         
     return visit
-
-
-# ---------- Doctor-driven changes ----------
-
-def doctor_reschedule_visit(conn, visit_id, doctor_id, new_visit_date):
-    """Doctor reschedules a visit..."""
-    visit = visits.get_visit_by_id(conn, visit_id)
-    if not visit or visit['doctor_id'] != doctor_id:
-        return None
-
-    old_date = visit['visit_date']
-    if not visits.modify_visit_date(conn, visit_id, new_visit_date):
-        return None
-
-    try:
-        notif_service.create_notification(
-            conn, visit_id,
-            f'Doctor changed visit {visit_id} date from {old_date} to {new_visit_date}.'
-        )
-    except Exception:
-        pass
-
-    return visits.get_visit_by_id(conn, visit_id)
-
-
-def doctor_cancel_visit(conn, visit_id, doctor_id):
-    """Doctor cancels a visit..."""
-    visit = visits.get_visit_by_id(conn, visit_id)
-    if not visit or visit['doctor_id'] != doctor_id:
-        return None
-
-    try:
-        _remove_from_queue(conn, visit_id)
-        
-        if not visits.modify_visit_status(conn, visit_id, 'cancelled'):
-            conn.rollback()
-            return None
-            
-        conn.commit()
-
-        notif_service.create_notification(conn, visit_id, f'Doctor cancelled visit {visit_id}.')
-        
-    except ValueError:
-        conn.rollback()
-        return None
-    except Exception:
-        conn.rollback()
-        return None
-
-    return visits.get_visit_by_id(conn, visit_id)
