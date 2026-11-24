@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Edit3, Plus, User, Heart } from 'lucide-react';
 import Button from '../common/Button';
 import Input from '../common/Input';
 import Modal from '../common/Modal';
 import UpcomingAppointments from './UpcomingAppointments';
+import { getTodayDateString } from '../../utils/dateTime';
 
 export default function PatientDetails({
   patient,
   onBack,
   onEdit,
   onViewTimeline,
-  onAddVisitComplete
+  onAddVisitComplete,
+  onModifyVisit,
+  onDeleteVisit,
+  autoOpenAddVisit = false
 }) {
   // ============================================================================
   // BACKEND API INTEGRATION POINT
@@ -27,13 +31,21 @@ export default function PatientDetails({
   // Description: Returns active doctors and open timeslots for the selected specialty
   // ============================================================================
 
-  const [showAddVisitModal, setShowAddVisitModal] = useState(false);
+  const todayStr = getTodayDateString();
+  const [showAddVisitModal, setShowAddVisitModal] = useState(autoOpenAddVisit);
   const [visitType, setVisitType] = useState('Appointment'); // 'Regular' | 'Appointment' | 'Consultation'
-  const [visitDate, setVisitDate] = useState('2024-10-30');
+  const [visitDate, setVisitDate] = useState(todayStr);
   const [speciality, setSpeciality] = useState('Cardiology');
   const [selectedDoctor, setSelectedDoctor] = useState('Dr. Alexander Thorne');
   const [timeSlot, setTimeSlot] = useState('10:00 AM - 10:30 AM');
   const [reason, setReason] = useState('Follow-up consultation and blood pressure review');
+
+  useEffect(() => {
+    if (autoOpenAddVisit) {
+      setShowAddVisitModal(true);
+      setVisitDate(getTodayDateString());
+    }
+  }, [autoOpenAddVisit]);
 
   if (!patient) return null;
 
@@ -47,23 +59,29 @@ export default function PatientDetails({
     // BACKEND API INTEGRATION POINT
     // Function: api.visits.createVisit({
     //   patientId: patient.id,
+    //   patientName: `${patient.firstName} ${patient.lastName}`,
     //   type: visitType,
     //   date: visitDate,
+    //   time: timeSlot.split(' - ')[0],
     //   speciality: speciality,
     //   doctorId: 'doc-1',
     //   doctorName: selectedDoctor,
     //   timeSlot: timeSlot,
     //   reason: reason,
-    //   queueNumber: visitType === 'Regular' ? 'Q-06' : null,
-    //   billingStatus: 'Unpaid' // Read-only for receptionist; Finance changes later
+    //   billing: 'Unpaid'
     // })
     // ============================================================================
 
     const newVisitObj = {
-      id: `V-2024-00${Math.floor(Math.random() * 90) + 10}`,
+      patientId: patient.id,
+      patientName: `${patient.firstName} ${patient.lastName}`,
+      date: visitDate,
+      time: timeSlot.split(' - ')[0],
       dateTime: `${visitDate} ${timeSlot.split(' - ')[0]}`,
       type: visitType,
       physician: `${selectedDoctor} · ${speciality}`,
+      doctorName: selectedDoctor,
+      speciality: speciality,
       reason: reason || 'Scheduled visit',
       status: 'Upcoming',
       billing: 'Unpaid'
@@ -106,7 +124,10 @@ export default function PatientDetails({
           </Button>
           <Button
             variant="primary"
-            onClick={() => setShowAddVisitModal(true)}
+            onClick={() => {
+              setVisitDate(getTodayDateString());
+              setShowAddVisitModal(true);
+            }}
             icon={<Plus size={15} />}
           >
             + Add Visit
@@ -167,7 +188,7 @@ export default function PatientDetails({
           </div>
         </div>
 
-        {/* Top 3 Meta Stats (Responsive wrap) */}
+        {/* Top 3 Meta Stats */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-subtle)', letterSpacing: '0.05em' }}>
@@ -263,7 +284,7 @@ export default function PatientDetails({
                 <h3 className="card-title" style={{ fontSize: '14px' }}>Clinical Baselines</h3>
               </div>
               <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                Last Recorded {baselines.lastRecorded || 'Oct 24, 2024'}
+                Last Recorded {baselines.lastRecorded || 'Today'}
               </span>
             </div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -314,11 +335,15 @@ export default function PatientDetails({
           </div>
         </div>
 
-        {/* Right Column: Upcoming & Recent Visits */}
+        {/* Right Column: Upcoming & Recent Visits (With Edit, Delete, Ticket & Missed status) */}
         <div>
           <UpcomingAppointments
             visits={patient.recentVisits || []}
+            patientName={`${patient.firstName} ${patient.lastName}`}
+            patientId={patient.id}
             onViewTimeline={onViewTimeline}
+            onModifyVisit={onModifyVisit}
+            onDeleteVisit={onDeleteVisit}
           />
         </div>
       </div>

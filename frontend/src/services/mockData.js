@@ -1,5 +1,6 @@
 // ============================================================================
 // BACKEND API SPECIFICATION & MOCK DATA SERVICE (Person 1 Scope)
+// Dynamic Dates, Automated Missed Visits & Strictly Unique Auto-Incrementing Patient IDs
 // ----------------------------------------------------------------------------
 // Maps directly to the planned backend service endpoints:
 // - api.patients.getAll()              -> GET /api/v1/patients
@@ -7,13 +8,33 @@
 // - api.patients.create(data)          -> POST /api/v1/patients
 // - api.patients.update(id, data)      -> PUT /api/v1/patients/:id
 // - api.patients.search(query)         -> GET /api/v1/patients/search?q={query}
+// - api.patients.getNextId()           -> GET /api/v1/patients/sequence/next-id
 // - api.doctors.getAll()               -> GET /api/v1/doctors
 // - api.doctors.getById(id)            -> GET /api/v1/doctors/:id
 // - api.doctors.getAvailability(id)    -> GET /api/v1/doctors/:id/availability
+// - api.visits.getAllVisits()          -> GET /api/v1/visits
 // - api.visits.createVisit(data)       -> POST /api/v1/visits
+// - api.visits.updateVisit(id, data)   -> PUT /api/v1/visits/:id
 // - api.visits.deleteVisit(id)         -> DELETE /api/v1/visits/:id
+// - api.visits.checkIn(id)             -> POST /api/v1/visits/:id/check-in
+// - api.visits.markAsMissed(id)        -> PATCH /api/v1/visits/:id/status
 // - api.visits.printTicket(id)         -> POST /api/v1/visits/:id/print-ticket
 // ============================================================================
+
+import {
+  getTodayDateString,
+  getCurrentWeekDays,
+  formatDisplayDate,
+  isPastVisitDateTime
+} from '../utils/dateTime';
+
+const PATIENTS_STORAGE_KEY = 'curapulse_patients';
+const DOCTORS_STORAGE_KEY = 'curapulse_doctors';
+const VISITS_STORAGE_KEY = 'curapulse_visits';
+const LAST_PATIENT_NUM_KEY = 'curapulse_last_patient_number';
+
+const today = getTodayDateString();
+const currentWeek = getCurrentWeekDays();
 
 export const INITIAL_PATIENTS = [
   {
@@ -22,7 +43,7 @@ export const INITIAL_PATIENTS = [
     lastName: 'Vance',
     gender: 'Female',
     age: 48,
-    dateOfBirth: '1976-05-12',
+    dateOfBirth: '1978-05-12',
     phone: '+1 (555) 382-9014',
     email: 'eleanor.vance@example.com',
     emergencyContact: 'Marcus Vance (Spouse) • +1 (555) 382-9015',
@@ -31,77 +52,33 @@ export const INITIAL_PATIENTS = [
     primaryPhysician: 'Dr. A. Thorne',
     registeredSince: 'Feb 2021',
     clinicalBaselines: {
-      lastRecorded: 'Oct 24, 2024',
+      lastRecorded: 'Today',
       knownAllergies: 'Penicillin (Severe cutaneous reaction), Latex (Contact dermatitis)',
       chronicConditions: 'Essential Hypertension (ICD-10 I10), Mild Osteoarthritis (Right Knee)',
       restingBp: '124/82 mmHg',
       heartRate: '71 bpm',
       bmiMetric: '23.8 Normal'
     },
-    recentVisits: [
-      {
-        id: 'V-2024-0045',
-        dateTime: 'Oct 30, 2024 10:30 AM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Hypertension Quarterly Follow-up',
-        status: 'Scheduled',
-        billing: 'Unpaid'
-      },
-      {
-        id: 'V-2024-0038',
-        dateTime: 'Aug 14, 2024 02:15 PM',
-        physician: 'Dr. Elena Rostova · Orthopedics',
-        reason: 'Right Knee Joint Assessment',
-        status: 'Completed',
-        billing: 'Paid'
-      },
-      {
-        id: 'V-2024-0025',
-        dateTime: 'May 02, 2024 09:00 AM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Annual Routine Physical',
-        status: 'Completed',
-        billing: 'Paid'
-      },
-      {
-        id: 'V-2024-0012',
-        dateTime: 'Jan 18, 2024 11:45 AM',
-        physician: 'Dr. Marcus Chen · Internal Medicine',
-        reason: 'Acute Bronchitis Evaluation',
-        status: 'Completed',
-        billing: 'Paid'
-      }
-    ],
     clinicalNotes: [
       {
         id: 'CN-1',
-        date: '24 Oct 2024',
+        date: formatDisplayDate(today),
         doctor: 'Dr. Alexander Thorne',
         specialty: 'Cardiology',
-        visitId: 'V-2024-0039',
+        visitId: 'V-2026-0045',
         type: 'Consultation',
         status: 'Done',
-        note: 'Follow-up blood pressure review. Patient reports reduced chest tightness after exertion. Continue the prescribed plan and review in 3 months.'
+        note: 'Follow-up blood pressure review. Patient reports reduced chest tightness after exertion. Continue prescribed protocol.'
       },
       {
         id: 'CN-2',
-        date: '12 Oct 2024',
+        date: '12 Oct 2026',
         doctor: 'Dr. Elena Vance',
         specialty: 'Neurology',
-        visitId: 'V-2024-0031',
+        visitId: 'V-2026-0031',
         type: 'Appointment',
         status: 'Done',
-        note: 'Annual assessment completed. Mild hypertension documented. Advised sodium reduction, regular cardiovascular activity and monitoring at home.'
-      },
-      {
-        id: 'CN-3',
-        date: '14 Aug 2024',
-        doctor: 'Dr. Maya Lin',
-        specialty: 'General Practice',
-        visitId: 'V-2024-0018',
-        type: 'Regular',
-        status: 'Done',
-        note: 'Routine review. Medication history checked and recorded. Patient advised to bring previous laboratory results to the next consultation.'
+        note: 'Annual assessment completed. Mild hypertension documented. Advised sodium reduction and monitoring at home.'
       }
     ]
   },
@@ -111,131 +88,23 @@ export const INITIAL_PATIENTS = [
     lastName: 'Vance',
     gender: 'Male',
     age: 44,
-    dateOfBirth: '1980-03-18',
+    dateOfBirth: '1982-03-18',
     phone: '+1 (555) 438-9920',
     email: 'marcus.vance@example.com',
     emergencyContact: 'Eleanor Vance • +1 (555) 382-9014',
-    additionalInfo: 'Advising continuous sodium reduction.',
+    additionalInfo: 'Continuous cardiovascular evaluation.',
     bloodType: 'A+ Positive',
     primaryPhysician: 'Dr. A. Thorne',
     registeredSince: 'Mar 2022',
     clinicalBaselines: {
-      lastRecorded: 'Oct 28, 2024',
+      lastRecorded: 'Today',
       knownAllergies: 'None recorded',
       chronicConditions: 'Mild hypertension',
       restingBp: '128/82 mmHg',
       heartRate: '74 bpm',
       bmiMetric: '24.2 Normal'
     },
-    recentVisits: [
-      {
-        id: 'V-2024-0046',
-        dateTime: 'Oct 28, 2024 09:30 AM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Consultation & Clinical Notes',
-        status: 'Scheduled',
-        billing: 'Paid'
-      }
-    ]
-  },
-  {
-    id: 'P-000154',
-    firstName: 'Amina',
-    lastName: 'Lin',
-    gender: 'Female',
-    age: 29,
-    dateOfBirth: '1995-07-04',
-    phone: '+1 (555) 712-4091',
-    email: 'amina.lin@example.com',
-    emergencyContact: 'Wei Lin • +1 (555) 712-4090',
-    additionalInfo: '',
-    bloodType: 'B+ Positive',
-    primaryPhysician: 'Dr. M. Lin',
-    registeredSince: 'Jan 2023',
-    clinicalBaselines: {
-      lastRecorded: 'Oct 15, 2024',
-      knownAllergies: 'Sulfa drugs',
-      chronicConditions: 'None',
-      restingBp: '118/76 mmHg',
-      heartRate: '68 bpm',
-      bmiMetric: '21.5 Normal'
-    },
-    recentVisits: [
-      {
-        id: 'V-2024-0029',
-        dateTime: 'Oct 18, 2024 09:00 AM',
-        physician: 'Dr. Maya Lin · General Practice',
-        reason: 'Routine Health Checkup',
-        status: 'Completed',
-        billing: 'Paid'
-      }
-    ]
-  },
-  {
-    id: 'P-000153',
-    firstName: 'David',
-    lastName: 'Hayes',
-    gender: 'Male',
-    age: 61,
-    dateOfBirth: '1963-01-12',
-    phone: '+1 (555) 309-8812',
-    email: 'david.hayes@example.com',
-    emergencyContact: 'Sarah Hayes • +1 (555) 309-8811',
-    additionalInfo: '',
-    bloodType: 'O- Negative',
-    primaryPhysician: 'Dr. E. Vance',
-    registeredSince: 'Sep 2020',
-    clinicalBaselines: {
-      lastRecorded: 'Oct 22, 2024',
-      knownAllergies: 'Aspirin',
-      chronicConditions: 'Type 2 Diabetes',
-      restingBp: '132/86 mmHg',
-      heartRate: '78 bpm',
-      bmiMetric: '27.4 Overweight'
-    },
-    recentVisits: [
-      {
-        id: 'V-2024-0035',
-        dateTime: 'Oct 22, 2024 11:30 AM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Cardiac Stress Assessment',
-        status: 'Missed',
-        billing: 'Unpaid'
-      }
-    ]
-  },
-  {
-    id: 'P-000152',
-    firstName: 'Sofia',
-    lastName: 'Reyes',
-    gender: 'Female',
-    age: 34,
-    dateOfBirth: '1990-09-22',
-    phone: '+1 (555) 911-3049',
-    email: 'sofia.reyes@example.com',
-    emergencyContact: 'Carlos Reyes • +1 (555) 911-3048',
-    additionalInfo: '',
-    bloodType: 'AB+ Positive',
-    primaryPhysician: 'Dr. A. Thorne',
-    registeredSince: 'Nov 2021',
-    clinicalBaselines: {
-      lastRecorded: 'Oct 21, 2024',
-      knownAllergies: 'None',
-      chronicConditions: 'None',
-      restingBp: '115/75 mmHg',
-      heartRate: '65 bpm',
-      bmiMetric: '22.0 Normal'
-    },
-    recentVisits: [
-      {
-        id: 'V-2024-0032',
-        dateTime: 'Oct 21, 2024 09:00 AM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Follow-up Consultation',
-        status: 'Completed',
-        billing: 'Paid'
-      }
-    ]
+    clinicalNotes: []
   },
   {
     id: 'P-000142',
@@ -243,7 +112,7 @@ export const INITIAL_PATIENTS = [
     lastName: 'Rostova',
     gender: 'Female',
     age: 36,
-    dateOfBirth: '1988-05-14',
+    dateOfBirth: '1990-05-14',
     phone: '+1 (555) 234-8901',
     email: 'elena.rostova@example.com',
     emergencyContact: 'Dmitri Rostov • +1 (555) 234-8900',
@@ -252,55 +121,94 @@ export const INITIAL_PATIENTS = [
     primaryPhysician: 'Dr. A. Thorne',
     registeredSince: 'May 2022',
     clinicalBaselines: {
-      lastRecorded: 'Oct 23, 2024',
+      lastRecorded: 'Yesterday',
       knownAllergies: 'None',
       chronicConditions: 'Asthma (Mild intermittent)',
       restingBp: '120/80 mmHg',
       heartRate: '72 bpm',
       bmiMetric: '23.1 Normal'
     },
-    recentVisits: [
-      {
-        id: 'V-2024-0038',
-        dateTime: 'Oct 23, 2024 02:30 PM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Cardio Screening',
-        status: 'Completed',
-        billing: 'Unpaid'
-      }
-    ]
+    clinicalNotes: []
   },
   {
-    id: 'P-000139',
-    firstName: 'Elena',
-    lastName: 'Solis-Gomez',
+    id: 'P-000154',
+    firstName: 'Amina',
+    lastName: 'Lin',
     gender: 'Female',
-    age: 30,
-    dateOfBirth: '1994-08-29',
-    phone: '+1 (555) 892-1144',
-    email: 'elena.sg@example.com',
-    emergencyContact: 'Mateo Gomez • +1 (555) 892-1140',
+    age: 29,
+    dateOfBirth: '1997-07-04',
+    phone: '+1 (555) 712-4091',
+    email: 'amina.lin@example.com',
+    emergencyContact: 'Wei Lin • +1 (555) 712-4090',
     additionalInfo: '',
-    bloodType: 'A- Negative',
-    primaryPhysician: 'Dr. R. Chen',
-    registeredSince: 'Jun 2023',
+    bloodType: 'B+ Positive',
+    primaryPhysician: 'Dr. M. Lin',
+    registeredSince: 'Jan 2023',
     clinicalBaselines: {
-      lastRecorded: 'Sep 10, 2024',
-      knownAllergies: 'Latex',
+      lastRecorded: 'Last week',
+      knownAllergies: 'Sulfa drugs',
       chronicConditions: 'None',
-      restingBp: '112/70 mmHg',
-      heartRate: '64 bpm',
-      bmiMetric: '20.8 Normal'
+      restingBp: '118/76 mmHg',
+      heartRate: '68 bpm',
+      bmiMetric: '21.5 Normal'
     },
-    recentVisits: []
+    clinicalNotes: []
   },
   {
-    id: 'PT-84291',
+    id: 'P-000153',
+    firstName: 'David',
+    lastName: 'Hayes',
+    gender: 'Male',
+    age: 61,
+    dateOfBirth: '1965-01-12',
+    phone: '+1 (555) 309-8812',
+    email: 'david.hayes@example.com',
+    emergencyContact: 'Sarah Hayes • +1 (555) 309-8811',
+    additionalInfo: '',
+    bloodType: 'O- Negative',
+    primaryPhysician: 'Dr. E. Vance',
+    registeredSince: 'Sep 2020',
+    clinicalBaselines: {
+      lastRecorded: 'Recent',
+      knownAllergies: 'Aspirin',
+      chronicConditions: 'Type 2 Diabetes',
+      restingBp: '132/86 mmHg',
+      heartRate: '78 bpm',
+      bmiMetric: '27.4 Overweight'
+    },
+    clinicalNotes: []
+  },
+  {
+    id: 'P-000152',
+    firstName: 'Sofia',
+    lastName: 'Reyes',
+    gender: 'Female',
+    age: 34,
+    dateOfBirth: '1992-09-22',
+    phone: '+1 (555) 911-3049',
+    email: 'sofia.reyes@example.com',
+    emergencyContact: 'Carlos Reyes • +1 (555) 911-3048',
+    additionalInfo: '',
+    bloodType: 'AB+ Positive',
+    primaryPhysician: 'Dr. A. Thorne',
+    registeredSince: 'Nov 2021',
+    clinicalBaselines: {
+      lastRecorded: 'Recent',
+      knownAllergies: 'None',
+      chronicConditions: 'None',
+      restingBp: '115/75 mmHg',
+      heartRate: '65 bpm',
+      bmiMetric: '22.0 Normal'
+    },
+    clinicalNotes: []
+  },
+  {
+    id: 'P-000156',
     firstName: 'Nadia',
     lastName: 'Bensaid',
     gender: 'Female',
     age: 32,
-    dateOfBirth: '1992-02-18',
+    dateOfBirth: '1994-02-18',
     phone: '0555 62 81 04',
     email: 'nadia.bensaid@email.com',
     emergencyContact: 'Karim Bensaid • 0555 62 81 05',
@@ -309,23 +217,137 @@ export const INITIAL_PATIENTS = [
     primaryPhysician: 'Dr. Alexander Thorne',
     registeredSince: 'Oct 2024',
     clinicalBaselines: {
-      lastRecorded: 'Oct 28, 2024',
+      lastRecorded: 'Today',
       knownAllergies: 'None recorded',
       chronicConditions: 'Under evaluation',
       restingBp: '122/80 mmHg',
       heartRate: '70 bpm',
       bmiMetric: '22.5 Normal'
     },
-    recentVisits: [
-      {
-        id: 'V-2024-0050',
-        dateTime: 'Oct 30, 2024 10:00 AM',
-        physician: 'Dr. Alexander Thorne · Cardiology',
-        reason: 'Follow-up consultation and blood pressure review',
-        status: 'Scheduled',
-        billing: 'Unpaid'
-      }
-    ]
+    clinicalNotes: []
+  }
+];
+
+// Initial shared clinic visits matching Sprint 1 Figma pages
+export const INITIAL_VISITS = [
+  {
+    id: 'V-2026-0046',
+    patientId: 'P-000155',
+    patientName: 'Marcus Vance',
+    slotNumber: '#1',
+    time: '08:30 AM',
+    date: today,
+    dateTime: `${today} 08:30 AM`,
+    type: 'Consultation',
+    physician: 'Dr. Alexander Thorne · Cardiology',
+    doctorName: 'Dr. Alexander Thorne',
+    speciality: 'Cardiology',
+    reason: 'Clinical notes review and hypertension monitoring',
+    status: 'Present',
+    queueNumber: 'Q-01',
+    billing: 'Paid'
+  },
+  {
+    id: 'V-2026-0045',
+    patientId: 'P-000108',
+    patientName: 'Eleanor Vance',
+    slotNumber: '#2',
+    time: '09:00 AM',
+    date: today,
+    dateTime: `${today} 09:00 AM`,
+    type: 'Appointment',
+    physician: 'Dr. Alexander Thorne · Cardiology',
+    doctorName: 'Dr. Alexander Thorne',
+    speciality: 'Cardiology',
+    reason: 'Hypertension Quarterly Follow-up',
+    status: 'Upcoming',
+    queueNumber: null,
+    billing: 'Unpaid'
+  },
+  {
+    id: 'V-2026-0042',
+    patientId: 'P-000142',
+    patientName: 'Elena Rostova',
+    slotNumber: '#3',
+    time: '09:30 AM',
+    date: today,
+    dateTime: `${today} 09:30 AM`,
+    type: 'Appointment',
+    physician: 'Dr. Alexander Thorne · Cardiology',
+    doctorName: 'Dr. Alexander Thorne',
+    speciality: 'Cardiology',
+    reason: 'Cardio screening assessment',
+    status: 'Present',
+    queueNumber: 'Q-02',
+    billing: 'Unpaid'
+  },
+  {
+    id: 'V-2026-0038',
+    patientId: 'P-000154',
+    patientName: 'Amina Lin',
+    slotNumber: '#4',
+    time: '10:00 AM',
+    date: today,
+    dateTime: `${today} 10:00 AM`,
+    type: 'Regular',
+    physician: 'Dr. Maya Lin · General Practice',
+    doctorName: 'Dr. Maya Lin',
+    speciality: 'General Practice',
+    reason: 'Routine health checkup',
+    status: 'Upcoming',
+    queueNumber: 'Q-03',
+    billing: 'Unpaid'
+  },
+  {
+    id: 'V-2026-0035',
+    patientId: 'P-000153',
+    patientName: 'David Hayes',
+    slotNumber: '#5',
+    time: '10:30 AM',
+    date: today,
+    dateTime: `${today} 10:30 AM`,
+    type: 'Appointment',
+    physician: 'Dr. Elena Vance · Neurology',
+    doctorName: 'Dr. Elena Vance',
+    speciality: 'Neurology',
+    reason: 'Migraine and neurological screening',
+    status: 'Upcoming',
+    queueNumber: null,
+    billing: 'Paid'
+  },
+  {
+    id: 'V-2026-0032',
+    patientId: 'P-000156',
+    patientName: 'Nadia Bensaid',
+    slotNumber: '#6',
+    time: '11:15 AM',
+    date: today,
+    dateTime: `${today} 11:15 AM`,
+    type: 'Consultation',
+    physician: 'Dr. Alexander Thorne · Cardiology',
+    doctorName: 'Dr. Alexander Thorne',
+    speciality: 'Cardiology',
+    reason: 'Follow-up consultation and blood pressure review',
+    status: 'Upcoming',
+    queueNumber: null,
+    billing: 'Unpaid'
+  },
+  {
+    id: 'V-2026-0029',
+    patientId: 'P-000152',
+    patientName: 'Sofia Reyes',
+    slotNumber: '#7',
+    time: '08:00 AM',
+    date: '2026-11-23',
+    dateTime: '2026-11-23 08:00 AM',
+    type: 'Appointment',
+    physician: 'Dr. Alexander Thorne · Cardiology',
+    doctorName: 'Dr. Alexander Thorne',
+    speciality: 'Cardiology',
+    reason: 'Cardiac stress follow-up',
+    status: 'Missed',
+    queueNumber: null,
+    billing: 'Unpaid'
   }
 ];
 
@@ -350,16 +372,10 @@ export const INITIAL_DOCTORS = [
     ext: '4082',
     assignedSpace: 'Exam Room 4B',
     consultationSlot: '20 Minutes',
-    standardShifts: 'Monday through Friday · 08:30 AM — 04:30 PM EST',
+    standardShifts: 'Monday through Friday · 08:30 AM — 04:30 PM',
     availability: {
-      week: 'WEEK 44',
-      days: [
-        { key: 'MON', label: 'MON 28', date: '2024-10-28' },
-        { key: 'TUE', label: 'TUE 29', date: '2024-10-29' },
-        { key: 'WED', label: 'WED 30', date: '2024-10-30' },
-        { key: 'THU', label: 'THU 31', date: '2024-10-31' },
-        { key: 'FRI', label: 'FRI 01', date: '2024-11-01' }
-      ],
+      week: currentWeek.week,
+      days: currentWeek.days,
       timeSlots: [
         { time: '08:30 AM', slots: { MON: 'Booked', TUE: 'Available', WED: 'Booked', THU: 'Available', FRI: 'Available' } },
         { time: '09:30 AM', slots: { MON: 'Booked', TUE: 'Booked', WED: 'Available', THU: 'Booked', FRI: 'Available' } },
@@ -393,16 +409,10 @@ export const INITIAL_DOCTORS = [
     ext: '4083',
     assignedSpace: 'Exam Room 2A',
     consultationSlot: '30 Minutes',
-    standardShifts: 'Monday through Friday · 09:00 AM — 05:00 PM EST',
+    standardShifts: 'Monday through Friday · 09:00 AM — 05:00 PM',
     availability: {
-      week: 'WEEK 44',
-      days: [
-        { key: 'MON', label: 'MON 28', date: '2024-10-28' },
-        { key: 'TUE', label: 'TUE 29', date: '2024-10-29' },
-        { key: 'WED', label: 'WED 30', date: '2024-10-30' },
-        { key: 'THU', label: 'THU 31', date: '2024-10-31' },
-        { key: 'FRI', label: 'FRI 01', date: '2024-11-01' }
-      ],
+      week: currentWeek.week,
+      days: currentWeek.days,
       timeSlots: [
         { time: '08:30 AM', slots: { MON: 'Available', TUE: 'Booked', WED: 'Available', THU: 'Available', FRI: 'Booked' } },
         { time: '09:30 AM', slots: { MON: 'Booked', TUE: 'Booked', WED: 'Booked', THU: 'Available', FRI: 'Available' } },
@@ -436,16 +446,10 @@ export const INITIAL_DOCTORS = [
     ext: '4084',
     assignedSpace: 'Pediatric Wing 1B',
     consultationSlot: '15 Minutes',
-    standardShifts: 'Tuesday through Saturday · 08:00 AM — 04:00 PM EST',
+    standardShifts: 'Tuesday through Saturday · 08:00 AM — 04:00 PM',
     availability: {
-      week: 'WEEK 44',
-      days: [
-        { key: 'MON', label: 'MON 28', date: '2024-10-28' },
-        { key: 'TUE', label: 'TUE 29', date: '2024-10-29' },
-        { key: 'WED', label: 'WED 30', date: '2024-10-30' },
-        { key: 'THU', label: 'THU 31', date: '2024-10-31' },
-        { key: 'FRI', label: 'FRI 01', date: '2024-11-01' }
-      ],
+      week: currentWeek.week,
+      days: currentWeek.days,
       timeSlots: [
         { time: '08:30 AM', slots: { MON: 'Booked', TUE: 'Booked', WED: 'Booked', THU: 'Booked', FRI: 'Booked' } },
         { time: '09:30 AM', slots: { MON: 'Booked', TUE: 'Booked', WED: 'Booked', THU: 'Booked', FRI: 'Booked' } },
@@ -479,16 +483,10 @@ export const INITIAL_DOCTORS = [
     ext: '4085',
     assignedSpace: 'Clinic Room 105',
     consultationSlot: '20 Minutes',
-    standardShifts: 'Monday through Friday · 08:30 AM — 04:30 PM EST',
+    standardShifts: 'Monday through Friday · 08:30 AM — 04:30 PM',
     availability: {
-      week: 'WEEK 44',
-      days: [
-        { key: 'MON', label: 'MON 28', date: '2024-10-28' },
-        { key: 'TUE', label: 'TUE 29', date: '2024-10-29' },
-        { key: 'WED', label: 'WED 30', date: '2024-10-30' },
-        { key: 'THU', label: 'THU 31', date: '2024-10-31' },
-        { key: 'FRI', label: 'FRI 01', date: '2024-11-01' }
-      ],
+      week: currentWeek.week,
+      days: currentWeek.days,
       timeSlots: [
         { time: '08:30 AM', slots: { MON: 'Available', TUE: 'Available', WED: 'Available', THU: 'Booked', FRI: 'Available' } },
         { time: '09:30 AM', slots: { MON: 'Available', TUE: 'Booked', WED: 'Available', THU: 'Available', FRI: 'Booked' } },
@@ -504,41 +502,258 @@ export const INITIAL_DOCTORS = [
   }
 ];
 
-// Helper state storage with LocalStorage persistence
-const PATIENTS_STORAGE_KEY = 'curapulse_patients';
-const DOCTORS_STORAGE_KEY = 'curapulse_doctors';
+// ============================================================================
+// AUTO-INCREMENTING UNIQUE PATIENT ID GENERATOR
+// Guarantees static +1 sequential IDs: P-000157, P-000158, P-000159...
+// Prevents duplicate IDs across all created patients
+// ============================================================================
 
-// BACKEND API INTEGRATION: api.patients.getStoredPatients() -> GET /api/v1/patients
-export function getStoredPatients() {
-  const data = localStorage.getItem(PATIENTS_STORAGE_KEY);
+export function getNextPatientId() {
+  const patients = getStoredPatients();
+
+  // Find the highest numeric index among all existing patient IDs
+  let maxNumericId = 156;
+  patients.forEach((p) => {
+    if (p && p.id) {
+      const match = p.id.match(/P-0*(\d+)/i);
+      if (match) {
+        const parsed = parseInt(match[1], 10);
+        if (!isNaN(parsed) && parsed > maxNumericId) {
+          maxNumericId = parsed;
+        }
+      }
+    }
+  });
+
+  const storedCounter = parseInt(localStorage.getItem(LAST_PATIENT_NUM_KEY), 10);
+  const nextNum = Math.max(maxNumericId, !isNaN(storedCounter) ? storedCounter : 156) + 1;
+
+  localStorage.setItem(LAST_PATIENT_NUM_KEY, String(nextNum));
+  return `P-000${nextNum}`;
+}
+
+// ============================================================================
+// VISITS DATA ACCESS & MUTATIONS (WITH MISSED STATUS AUTO-EVALUATION)
+// ============================================================================
+
+export function getAllVisits() {
+  const data = localStorage.getItem(VISITS_STORAGE_KEY);
+  let list = INITIAL_VISITS;
   if (data) {
     try {
-      return JSON.parse(data);
+      list = JSON.parse(data);
     } catch {
       // fallback
     }
   }
-  localStorage.setItem(PATIENTS_STORAGE_KEY, JSON.stringify(INITIAL_PATIENTS));
-  return INITIAL_PATIENTS;
+
+  // Automatic evaluation: If an appointment date & time is < current time
+  // and status is still Upcoming/Scheduled (patient did not come), transition to Missed!
+  let hasChanges = false;
+  const evaluated = list.map((v) => {
+    const isUpcoming = v.status?.toLowerCase() === 'upcoming' || v.status?.toLowerCase() === 'scheduled';
+    if (isUpcoming && isPastVisitDateTime(v.date || v.dateTime, v.time)) {
+      hasChanges = true;
+      return {
+        ...v,
+        status: 'Missed'
+      };
+    }
+    return v;
+  });
+
+  if (hasChanges) {
+    localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(evaluated));
+  } else if (!data) {
+    localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(INITIAL_VISITS));
+  }
+
+  return evaluated;
 }
 
-// BACKEND API INTEGRATION: api.patients.saveStoredPatients() -> POST /api/v1/patients/batch
+export function saveAllVisits(visits) {
+  localStorage.setItem(VISITS_STORAGE_KEY, JSON.stringify(visits));
+  window.dispatchEvent(new CustomEvent('curapulse_visits_updated', { detail: visits }));
+}
+
+export function getVisitsByPatientId(patientId) {
+  const visits = getAllVisits();
+  return visits.filter((v) => v.patientId?.toLowerCase() === patientId?.toLowerCase());
+}
+
+export function createVisit(payload) {
+  const visits = getAllVisits();
+  const nextNum = visits.length + 50;
+  const visitId = payload.id || `V-2026-00${nextNum}`;
+
+  let queueNumber = payload.queueNumber || null;
+  if (!queueNumber && (payload.type === 'Regular' || payload.status === 'Present')) {
+    const presentCount = visits.filter((v) => v.queueNumber).length + 1;
+    queueNumber = `Q-${String(presentCount).padStart(2, '0')}`;
+  }
+
+  const newVisit = {
+    ...payload,
+    id: visitId,
+    date: payload.date || getTodayDateString(),
+    time: payload.time || '10:00 AM',
+    dateTime: payload.dateTime || `${payload.date || getTodayDateString()} ${payload.time || '10:00 AM'}`,
+    status: payload.status || 'Upcoming',
+    billing: payload.billing || 'Unpaid',
+    queueNumber
+  };
+
+  const updatedVisits = [newVisit, ...visits];
+  saveAllVisits(updatedVisits);
+
+  if (payload.patientId) {
+    syncPatientVisits(payload.patientId);
+  }
+
+  return newVisit;
+}
+
+export function updateVisit(visitId, updatedFields) {
+  const visits = getAllVisits();
+  const idx = visits.findIndex((v) => v.id === visitId);
+  if (idx === -1) return null;
+
+  const current = visits[idx];
+  const dateVal = updatedFields.date || current.date;
+  const timeVal = updatedFields.time || current.time;
+
+  const updated = {
+    ...current,
+    ...updatedFields,
+    date: dateVal,
+    time: timeVal,
+    dateTime: dateVal && timeVal ? `${dateVal} ${timeVal}` : (updatedFields.dateTime || current.dateTime)
+  };
+
+  visits[idx] = updated;
+  saveAllVisits(visits);
+
+  if (updated.patientId) {
+    syncPatientVisits(updated.patientId);
+  }
+
+  return updated;
+}
+
+export function deleteVisit(visitId) {
+  const visits = getAllVisits();
+  const target = visits.find((v) => v.id === visitId);
+  const updated = visits.filter((v) => v.id !== visitId);
+  saveAllVisits(updated);
+
+  if (target?.patientId) {
+    syncPatientVisits(target.patientId);
+  }
+
+  return true;
+}
+
+export function checkInVisit(visitId) {
+  const visits = getAllVisits();
+  const idx = visits.findIndex((v) => v.id === visitId);
+  if (idx === -1) return null;
+
+  const presentCount = visits.filter((v) => v.queueNumber).length + 1;
+  const queueNumber = `Q-${String(presentCount).padStart(2, '0')}`;
+
+  visits[idx] = {
+    ...visits[idx],
+    status: 'Present',
+    queueNumber
+  };
+
+  saveAllVisits(visits);
+
+  if (visits[idx].patientId) {
+    syncPatientVisits(visits[idx].patientId);
+  }
+
+  return visits[idx];
+}
+
+export function markVisitAsMissed(visitId) {
+  return updateVisit(visitId, { status: 'Missed' });
+}
+
+function syncPatientVisits(patientId) {
+  const patients = getStoredPatients();
+  const pIdx = patients.findIndex((p) => p.id.toLowerCase() === patientId.toLowerCase());
+  if (pIdx !== -1) {
+    const patientVisits = getVisitsByPatientId(patientId);
+    patients[pIdx] = {
+      ...patients[pIdx],
+      recentVisits: patientVisits
+    };
+    saveStoredPatients(patients);
+  }
+}
+
+// ============================================================================
+// PATIENTS DATA ACCESS & MUTATIONS
+// ============================================================================
+
+export function getStoredPatients() {
+  const data = localStorage.getItem(PATIENTS_STORAGE_KEY);
+  let list = INITIAL_PATIENTS;
+
+  if (data) {
+    try {
+      list = JSON.parse(data);
+    } catch {
+      list = INITIAL_PATIENTS;
+    }
+  }
+
+  // De-duplicate any patients that might share the same ID in localStorage
+  const seenIds = new Set();
+  const sanitized = list.map((patient, index) => {
+    let currentId = patient.id;
+    if (!currentId || seenIds.has(currentId.toLowerCase())) {
+      // Reassign static unique ID
+      currentId = `P-000${156 + index}`;
+    }
+    seenIds.add(currentId.toLowerCase());
+    return {
+      ...patient,
+      id: currentId
+    };
+  });
+
+  const allVisits = getAllVisits();
+  const finalized = sanitized.map((p) => ({
+    ...p,
+    recentVisits: allVisits.filter((v) => v.patientId?.toLowerCase() === p.id.toLowerCase())
+  }));
+
+  if (JSON.stringify(list) !== JSON.stringify(sanitized)) {
+    localStorage.setItem(PATIENTS_STORAGE_KEY, JSON.stringify(finalized));
+  } else if (!data) {
+    localStorage.setItem(PATIENTS_STORAGE_KEY, JSON.stringify(finalized));
+  }
+
+  return finalized;
+}
+
 export function saveStoredPatients(patients) {
   localStorage.setItem(PATIENTS_STORAGE_KEY, JSON.stringify(patients));
 }
 
-// BACKEND API INTEGRATION: api.patients.getById(id) -> GET /api/v1/patients/:id
 export function getPatientById(id) {
   const patients = getStoredPatients();
-  return patients.find(p => p.id.toLowerCase() === id.toLowerCase()) || null;
+  return patients.find((p) => p.id.toLowerCase() === id.toLowerCase()) || null;
 }
 
-// BACKEND API INTEGRATION: api.patients.addPatient(data) -> POST /api/v1/patients
 export function addPatient(patientData) {
   const patients = getStoredPatients();
-  const nextNumber = patients.length + 100;
-  const newId = patientData.id || `P-000${nextNumber}`;
-  
+
+  // Generate static +1 unique ID (P-000157, P-000158, ...)
+  const newId = patientData.id || getNextPatientId();
+
   let age = patientData.age || 0;
   if (patientData.dateOfBirth) {
     const dob = new Date(patientData.dateOfBirth);
@@ -560,8 +775,8 @@ export function addPatient(patientData) {
       heartRate: '72 bpm',
       bmiMetric: '22.0 Normal'
     },
-    recentVisits: patientData.recentVisits || [],
-    clinicalNotes: patientData.clinicalNotes || []
+    recentVisits: [],
+    clinicalNotes: []
   };
 
   const updated = [newPatient, ...patients];
@@ -569,10 +784,9 @@ export function addPatient(patientData) {
   return newPatient;
 }
 
-// BACKEND API INTEGRATION: api.patients.updatePatient(id, fields) -> PUT /api/v1/patients/:id
 export function updatePatient(id, updatedFields) {
   const patients = getStoredPatients();
-  const index = patients.findIndex(p => p.id.toLowerCase() === id.toLowerCase());
+  const index = patients.findIndex((p) => p.id.toLowerCase() === id.toLowerCase());
   if (index === -1) return null;
 
   patients[index] = { ...patients[index], ...updatedFields };
@@ -580,7 +794,10 @@ export function updatePatient(id, updatedFields) {
   return patients[index];
 }
 
-// BACKEND API INTEGRATION: api.doctors.getStoredDoctors() -> GET /api/v1/doctors
+// ============================================================================
+// DOCTORS DATA ACCESS & MUTATIONS
+// ============================================================================
+
 export function getStoredDoctors() {
   const data = localStorage.getItem(DOCTORS_STORAGE_KEY);
   if (data) {
@@ -594,19 +811,17 @@ export function getStoredDoctors() {
   return INITIAL_DOCTORS;
 }
 
-// BACKEND API INTEGRATION: api.doctors.getDoctorById(id) -> GET /api/v1/doctors/:id
 export function getDoctorById(id) {
   const doctors = getStoredDoctors();
-  return doctors.find(d => d.id === id) || doctors[0];
+  return doctors.find((d) => d.id === id) || doctors[0];
 }
 
-// BACKEND API INTEGRATION: api.doctors.toggleDoctorSlot(id, day, time) -> PATCH /api/v1/doctors/:id/schedule/slot
 export function toggleDoctorSlot(doctorId, dayKey, timeStr) {
   const doctors = getStoredDoctors();
-  const doc = doctors.find(d => d.id === doctorId);
+  const doc = doctors.find((d) => d.id === doctorId);
   if (!doc) return null;
 
-  const timeSlot = doc.availability.timeSlots.find(ts => ts.time === timeStr);
+  const timeSlot = doc.availability.timeSlots.find((ts) => ts.time === timeStr);
   if (timeSlot && timeSlot.slots && timeSlot.slots[dayKey]) {
     timeSlot.slots[dayKey] = timeSlot.slots[dayKey] === 'Available' ? 'Booked' : 'Available';
     localStorage.setItem(DOCTORS_STORAGE_KEY, JSON.stringify(doctors));

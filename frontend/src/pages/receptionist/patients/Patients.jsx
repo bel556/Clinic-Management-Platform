@@ -47,8 +47,8 @@ export default function Patients() {
   const hasNoResults = searchQuery.trim() !== '' && filteredPatients.length === 0;
 
   const handleAddVisit = (patient) => {
-    // Navigates directly to the patient's profile to open the Add Visit workflow
-    navigate(`/receptionist/patients/${patient.id}`);
+    // Navigates directly to the patient's profile and auto-opens the Add Visit workflow
+    navigate(`/receptionist/patients/${patient.id}?addVisit=true`);
   };
 
   return (
