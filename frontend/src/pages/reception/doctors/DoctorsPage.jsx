@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PageHeader } from '../../../components/layout'
-import { SearchInput } from '../../../components/common'
+import { ErrorPane, SearchInput } from '../../../components/common'
 import { DoctorList } from '../../../components/doctor/DoctorList'
 import { DoctorAvailabilityGrid } from '../../../components/doctor/DoctorAvailabilityGrid'
 import { getDoctorAvailability, listDoctors } from '../../../services/doctors'
@@ -9,13 +9,17 @@ import { useAsync, useDocumentTitle, useDebouncedValue } from '../../../utils/ho
 export default function DoctorsPage() {
   useDocumentTitle('Doctors')
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState('D-01')
+  const [selectedId, setSelectedId] = useState(null)
   const debounced = useDebouncedValue(query, 160)
 
-  const { data: doctors, loading } = useAsync(() => listDoctors({ query: debounced }), [debounced])
+  const { data: doctors, loading, error, reload } = useAsync(
+    () => listDoctors({ query: debounced }),
+    [debounced],
+  )
+  const activeId = selectedId ?? doctors?.[0]?.id ?? null
   const { data: availability, loading: availabilityLoading } = useAsync(
-    () => getDoctorAvailability(selectedId),
-    [selectedId],
+    () => (activeId ? getDoctorAvailability(activeId) : Promise.resolve(null)),
+    [activeId],
   )
 
   return (
@@ -34,10 +38,12 @@ export default function DoctorsPage() {
         }
       />
 
+      {error ? <ErrorPane error={error} onRetry={reload} /> : null}
+
       <div className="u-grid2" style={{ gridTemplateColumns: '320px minmax(0, 1fr)', alignItems: 'start' }}>
         <DoctorList
           doctors={doctors ?? []}
-          selectedId={selectedId}
+          selectedId={activeId}
           onSelect={setSelectedId}
           loading={loading}
         />

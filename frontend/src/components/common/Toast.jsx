@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, TriangleAlert, X } from 'lucide-react'
+import { onError } from '../../services/events'
 import { cx } from './cx'
 import s from './ui.module.css'
 
@@ -23,6 +24,15 @@ export function ToastProvider({ children }) {
   )
 
   const value = useMemo(() => ({ push, dismiss }), [push, dismiss])
+
+  // Surface service-layer failures (failed fetches, 4xx/5xx) as error toasts.
+  useEffect(
+    () =>
+      onError((message) => {
+        push(message, { tone: 'error', duration: 6000 })
+      }),
+    [push],
+  )
 
   return (
     <ToastContext.Provider value={value}>

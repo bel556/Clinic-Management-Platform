@@ -13,20 +13,24 @@ import {
 } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
 import { listDoctorCalendar } from '../../../services/appointments'
+import { useSession } from '../../../services/session'
 import { useAsync, useDocumentTitle, useDebouncedValue } from '../../../utils/hooks'
-import { formatDateShort } from '../../../utils/format'
+import { formatDateShort, patientRef, visitRef } from '../../../utils/format'
 import s from '../doctorPages.module.css'
 
-const DOCTOR_ID = 'D-01'
 const PAGE_SIZE = 5
 
 export default function VisitHistoryPage() {
   useDocumentTitle('Visit history')
   const navigate = useNavigate()
+  const { doctorId: DOCTOR_ID } = useSession()
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const debounced = useDebouncedValue(query, 160)
-  const { data, loading } = useAsync(() => listDoctorCalendar(DOCTOR_ID), [])
+  const { data, loading } = useAsync(
+    () => (DOCTOR_ID ? listDoctorCalendar(DOCTOR_ID) : Promise.resolve(null)),
+    [DOCTOR_ID],
+  )
 
   const rows = useMemo(() => {
     const needle = debounced.trim().toLowerCase()
@@ -34,8 +38,9 @@ export default function VisitHistoryPage() {
       if (!needle) return true
       return (
         visit.patientName.toLowerCase().includes(needle) ||
-        visit.patientId.toLowerCase().includes(needle) ||
-        visit.id.toLowerCase().includes(needle)
+        patientRef(visit.patientId).toLowerCase().includes(needle) ||
+        String(visit.patientId).includes(needle) ||
+        visitRef(visit.id).toLowerCase().includes(needle)
       )
     })
   }, [data, debounced])
@@ -102,13 +107,13 @@ export default function VisitHistoryPage() {
                   <tr key={visit.id}>
                     <td>
                       <div className="u-strong">{formatDateShort(visit.date)}</div>
-                      <div className="u-xs u-muted u-mono">{visit.id}</div>
+                      <div className="u-xs u-muted u-mono">{visitRef(visit.id)}</div>
                     </td>
                     <td>
                       <div className="u-strong" style={{ fontSize: 11.5 }}>
                         {visit.patientName}
                       </div>
-                      <div className="u-xs u-muted u-mono">{visit.patientId}</div>
+                      <div className="u-xs u-muted u-mono">{patientRef(visit.patientId)}</div>
                     </td>
                     <td>{visit.type}</td>
                     <td>

@@ -1,3 +1,17 @@
+NOTIFICATION_SELECT = (
+    'select n.notification_id, n.message, n.is_read, '
+    'n.created_at as notification_created_at, '
+    'v.visit_id, v.visit_date, v.visit_type, v.status, '
+    'p.patient_id, p.full_name as patient_name, p.phone as patient_phone, '
+    'd.doctor_id, e.full_name as doctor_name '
+    'from NOTIFICATION n '
+    'join VISIT v on v.visit_id = n.visit_id '
+    'join PATIENT p on p.patient_id = v.patient_id '
+    'join DOCTOR d on d.doctor_id = v.doctor_id '
+    'join EMPLOYEE e on e.employee_id = d.employee_id '
+)
+
+
 def create_notification(conn, visit_id, message):
     try:
         with conn.cursor() as cur:
@@ -48,36 +62,26 @@ def mark_notification_read(conn, notification_id):
         return False
 
 
-def get_all_notifications(conn):
+def get_notification_by_id(conn, notification_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
-            'select n.notification_id, n.message, n.is_read, '
-            'v.visit_id, v.visit_date, v.visit_type, v.status, '
-            'p.patient_id, p.full_name as patient_name, p.phone as patient_phone, '
-            'd.doctor_id, e.full_name as doctor_name '
-            'from NOTIFICATION n '
-            'join VISIT v on v.visit_id = n.visit_id '
-            'join PATIENT p on p.patient_id = v.patient_id '
-            'join DOCTOR d on d.doctor_id = v.doctor_id '
-            'join EMPLOYEE e on e.employee_id = d.employee_id '
-            'order by n.notification_id desc'
+            NOTIFICATION_SELECT + 'where n.notification_id = %s',
+            (notification_id,)
         )
+        return cur.fetchone()
+
+
+def get_all_notifications(conn):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute(NOTIFICATION_SELECT + 'order by n.created_at desc, n.notification_id desc')
         return cur.fetchall()
 
 
 def get_unread_notifications(conn):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
-            'select n.notification_id, n.message, n.is_read, '
-            'v.visit_id, v.visit_date, v.visit_type, v.status, '
-            'p.patient_id, p.full_name as patient_name, p.phone as patient_phone, '
-            'd.doctor_id, e.full_name as doctor_name '
-            'from NOTIFICATION n '
-            'join VISIT v on v.visit_id = n.visit_id '
-            'join PATIENT p on p.patient_id = v.patient_id '
-            'join DOCTOR d on d.doctor_id = v.doctor_id '
-            'join EMPLOYEE e on e.employee_id = d.employee_id '
+            NOTIFICATION_SELECT +
             'where n.is_read = false '
-            'order by n.notification_id desc'
+            'order by n.created_at desc, n.notification_id desc'
         )
         return cur.fetchall()

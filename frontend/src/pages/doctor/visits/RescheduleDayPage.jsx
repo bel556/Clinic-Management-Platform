@@ -13,22 +13,25 @@ import {
 import { PageHeader } from '../../../components/layout'
 import { getAffectedVisits, rescheduleDay } from '../../../services/appointments'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { TOMORROW } from '../../../utils/constants'
-import { formatDayLong, formatTime } from '../../../utils/format'
+import { addDays, dateKey, formatDayLong, formatTime, now, patientRef, tomorrowKey } from '../../../utils/format'
+import { useSession } from '../../../services/session'
 import s from '../doctorPages.module.css'
 
-const DOCTOR_ID = 'D-01'
 
 export default function RescheduleDayPage() {
   useDocumentTitle('Reschedule entire day')
   const navigate = useNavigate()
   const toast = useToast()
-  const [original] = useState(TOMORROW)
-  const [newDate, setNewDate] = useState('2024-10-31')
+  const { doctorId: DOCTOR_ID, users } = useSession()
+  const [original] = useState(tomorrowKey())
+  const [newDate, setNewDate] = useState(dateKey(addDays(now(), 2)))
   const [reason, setReason] = useState('Change in clinic schedule')
   const [busy, setBusy] = useState(false)
 
-  const { data, loading } = useAsync(() => getAffectedVisits(DOCTOR_ID, original), [original])
+  const { data, loading } = useAsync(
+    () => (DOCTOR_ID ? getAffectedVisits(DOCTOR_ID, original) : Promise.resolve(null)),
+    [DOCTOR_ID, original],
+  )
 
   const submit = async (event) => {
     event.preventDefault()
@@ -69,7 +72,7 @@ export default function RescheduleDayPage() {
       <Card title="Choose a new day">
         <div className={s.selectedPatient} style={{ marginBottom: 12 }}>
           <CalendarSync size={12} />
-          <span className={s.selectedPatientName}>Dr. Alexander Thorne</span>
+          <span className={s.selectedPatientName}>{users.doctor.name}</span>
           <span className="u-mono u-xs u-muted">· {formatDayLong(original)}</span>
           <span className={s.muted}>
             {visits.length} visits will move together. Preserve each patient&apos;s current time.
@@ -122,7 +125,7 @@ export default function RescheduleDayPage() {
                   <tr key={visit.id}>
                     <td>
                       <div className="u-strong">{visit.patientName}</div>
-                      <div className="u-xs u-muted u-mono">{visit.patientId}</div>
+                      <div className="u-xs u-muted u-mono">{patientRef(visit.patientId)}</div>
                     </td>
                     <td className="u-nowrap">
                       {visit.dayLabel} · {formatTime(visit.date)}

@@ -1,3 +1,5 @@
+import { DEMO_MODE, DEMO_NOW } from './constants'
+
 const MONTHS = [
   'January',
   'February',
@@ -77,14 +79,19 @@ export function formatStamp(value) {
   return `${WEEKDAYS_SHORT[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()} · ${formatTime(d)}`
 }
 
+/** "Now" follows the demo clock in mock mode and the real clock against the API. */
+export function now() {
+  return DEMO_MODE ? DEMO_NOW : new Date()
+}
+
 export function formatAge(birthDate) {
   const d = toDate(birthDate)
   if (!d) return '—'
-  const now = new Date('2024-10-29T09:42:00')
-  let age = now.getFullYear() - d.getFullYear()
+  const reference = now()
+  let age = reference.getFullYear() - d.getFullYear()
   const beforeBirthday =
-    now.getMonth() < d.getMonth() ||
-    (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())
+    reference.getMonth() < d.getMonth() ||
+    (reference.getMonth() === d.getMonth() && reference.getDate() < d.getDate())
   if (beforeBirthday) age -= 1
   return `${age} yrs`
 }
@@ -119,4 +126,36 @@ export function iso(value) {
 
 export function plural(count, word, wordPlural) {
   return `${count} ${count === 1 ? word : wordPlural ?? `${word}s`}`
+}
+
+/* ------------------------------------------------------------------ *
+ * Human-readable references for numeric backend identifiers.
+ * Mock mode already passes strings ("P-000160"), which are returned
+ * unchanged so both data sources can share the same components.
+ * ------------------------------------------------------------------ */
+
+export function patientRef(id) {
+  if (id === null || id === undefined || id === '') return '—'
+  if (typeof id === 'string' && !/^\d+$/.test(id)) return id
+  return `P-${String(id).padStart(6, '0')}`
+}
+
+export function visitRef(id) {
+  if (id === null || id === undefined || id === '') return '—'
+  if (typeof id === 'string' && !/^\d+$/.test(id)) return id
+  return `V-${String(id).padStart(6, '0')}`
+}
+
+export function doctorRef(id) {
+  if (id === null || id === undefined || id === '') return '—'
+  if (typeof id === 'string' && !/^\d+$/.test(id)) return id
+  return `D-${String(id).padStart(2, '0')}`
+}
+
+export function todayKey() {
+  return dateKey(now())
+}
+
+export function tomorrowKey() {
+  return dateKey(addDays(now(), 1))
 }

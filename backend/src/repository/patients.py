@@ -1,13 +1,32 @@
+"""Patient persistence helpers.
+
+Every write uses a single statement so a failed update cannot leave the record
+half-modified (the previous implementation committed column by column).
+"""
+
+# Phone numbers are stored with whatever punctuation the desk typed; comparisons
+# strip the separators so "+1 (555) 438-9920" and "15554389920" both match.
+PHONE_DIGITS = (
+    "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),"
+    "'(',''),')',''),'.',''),'+','')"
+)
+
+
 def create_patient(conn, full_name, birth_date, phone, gender,
                    email: str | None = None,
                    additional_info: str | None = None,
-                   emergency_contact: str | None = None):
+                   emergency_contact: str | None = None,
+                   blood_type: str | None = None,
+                   allergies: str | None = None,
+                   conditions: str | None = None):
     try:
         with conn.cursor() as cur:
             cur.execute(
-                'insert into PATIENT(full_name,birth_date,phone,gender,email,additional_info,emergency_contact) '
-                'values(%s,%s,%s,%s,%s,%s,%s)',
-                (full_name, birth_date, phone, gender, email, additional_info, emergency_contact)
+                'insert into PATIENT(full_name,birth_date,phone,gender,email,additional_info,'
+                'emergency_contact,blood_type,allergies,conditions) '
+                'values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (full_name, birth_date, phone, gender, email, additional_info,
+                 emergency_contact, blood_type, allergies, conditions)
             )
             conn.commit()
             return cur.lastrowid
@@ -17,91 +36,24 @@ def create_patient(conn, full_name, birth_date, phone, gender,
         return None
 
 
-def modify_patient_name(conn, patient_id, new_name):
+def update_patient(conn, patient_id, full_name, birth_date, phone, gender,
+                   email, additional_info, emergency_contact,
+                   blood_type=None, allergies=None, conditions=None):
     try:
         with conn.cursor() as cur:
             cur.execute(
                 'update PATIENT '
-                'set full_name = %s '
-                'where patient_id = %s', (new_name, patient_id)
+                'set full_name = %s, birth_date = %s, phone = %s, gender = %s, '
+                '    email = %s, additional_info = %s, emergency_contact = %s, '
+                '    blood_type = %s, allergies = %s, conditions = %s '
+                'where patient_id = %s',
+                (full_name, birth_date, phone, gender, email,
+                 additional_info, emergency_contact, blood_type,
+                 allergies, conditions, patient_id)
             )
-            if cur.rowcount == 0:
-                conn.rollback()
-                return False
             conn.commit()
             return True
-    except Exception:
-        conn.rollback()
-        return False
 
-
-def modify_patient_birth_date(conn, patient_id, new_birth_date):
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                'update PATIENT '
-                'set birth_date = %s '
-                'where patient_id = %s', (new_birth_date, patient_id)
-            )
-            if cur.rowcount == 0:
-                conn.rollback()
-                return False
-            conn.commit()
-            return True
-    except Exception:
-        conn.rollback()
-        return False
-
-
-def modify_patient_phone(conn, patient_id, new_phone):
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                'update PATIENT '
-                'set phone = %s '
-                'where patient_id = %s', (new_phone, patient_id)
-            )
-            if cur.rowcount == 0:
-                conn.rollback()
-                return False
-            conn.commit()
-            return True
-    except Exception:
-        conn.rollback()
-        return False
-
-
-def modify_patient_additional_info(conn, patient_id, new_additional_info):
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                'update PATIENT '
-                'set additional_info = %s '
-                'where patient_id = %s', (new_additional_info, patient_id)
-            )
-            if cur.rowcount == 0:
-                conn.rollback()
-                return False
-            conn.commit()
-            return True
-    except Exception:
-        conn.rollback()
-        return False
-
-
-def modify_patient_email(conn, patient_id, new_email):
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                'update PATIENT '
-                'set email = %s '
-                'where patient_id = %s', (new_email, patient_id)
-            )
-            if cur.rowcount == 0:
-                conn.rollback()
-                return False
-            conn.commit()
-            return True
     except Exception:
         conn.rollback()
         return False
@@ -127,22 +79,24 @@ def get_patients_by_name(conn, name, limit: int = 50):
         return cur.fetchall()
 
 
-def get_patients_by_phone(conn, phone, limit: int = 50):
+def get_patients_by_phone(conn, digits, limit: int = 50):
+    """`digits` must already be punctuation-free (see patient_service)."""
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
             'select * from PATIENT '
-            'where phone like %s '
+            f'where {PHONE_DIGITS} like %s '
             'order by full_name '
-            'limit %s', (f'{phone}%', limit)
+            'limit %s', (f'{digits}%', limit)
         )
         return cur.fetchall()
 
 
-def get_all_patients(conn, limit: int = 50, offset: int = 0):
+def get_all_patients(conn, limit: int = 50, offset: int = 0, order: str = 'name'):
+    ordering = 'created_at desc' if order == 'recent' else 'full_name'
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
-            'select * from PATIENT '
-            'order by full_name '
+            f'select * from PATIENT '
+            f'order by {ordering} '
             'limit %s offset %s', (limit, offset)
         )
         return cur.fetchall()
@@ -152,10 +106,11 @@ def get_patient_visits(conn, patient_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
             'select v.visit_id, v.visit_date, v.financial_status, v.status, '
+            'v.visit_type, v.reason, v.slot, v.checked_in_at, v.completed_at, '
             'd.doctor_id, e.full_name as doctor_name, d.specialty, q.position '
             'from VISIT v '
             'join DOCTOR d on d.doctor_id = v.doctor_id '
-            'join EMPLOYEE e on e.employee_id = d.employee_id ' \
+            'join EMPLOYEE e on e.employee_id = d.employee_id '
             'left join QUEUE q on q.visit_id = v.visit_id '
             'where v.patient_id = %s '
             'order by v.visit_date desc', (patient_id,)

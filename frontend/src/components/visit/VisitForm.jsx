@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarCheck, Info } from 'lucide-react'
 import { Button, Field, InfoNote, Input, Select, Textarea } from '../common'
-import { availableSlots } from '../../services/appointments'
+import { availableSlots, slotStart24 } from '../../services/appointments'
 import { SPECIALTIES, TIME_SLOTS } from '../../utils/constants'
-import { formatDayLong } from '../../utils/format'
+import { formatDayLong, patientRef, todayKey } from '../../utils/format'
 import s from './visit.module.css'
 
 export function VisitForm({
@@ -19,20 +19,30 @@ export function VisitForm({
   busy = false,
 }) {
   const [type, setType] = useState(initial?.type ?? 'Appointment')
-  const [date, setDate] = useState(initial?.dayKey ?? '2024-10-30')
-  const [specialty, setSpecialty] = useState(initial?.specialty ?? 'Cardiology')
+  const [date, setDate] = useState(initial?.dayKey ?? todayKey())
+  const [specialty, setSpecialty] = useState(initial?.specialty ?? '')
   const [doctorId, setDoctorId] = useState(initial?.doctorId ?? '')
   const [slot, setSlot] = useState(initial?.slot ?? '')
   const [reason, setReason] = useState(initial?.reason ?? '')
   const [slots, setSlots] = useState(TIME_SLOTS)
   const [errors, setErrors] = useState({})
 
+  const specialtyOptions = useMemo(
+    () => [...new Set(doctors.map((doctor) => doctor.specialty).filter(Boolean))],
+    [doctors],
+  )
+  const effectiveSpecialty = specialty || specialtyOptions[0] || ''
+
   const specialtyDoctors = useMemo(
-    () => doctors.filter((doctor) => doctor.specialty === specialty),
-    [doctors, specialty],
+    () => doctors.filter((doctor) => doctor.specialty === effectiveSpecialty),
+    [doctors, effectiveSpecialty],
+  )
+  const bookingDoctors = useMemo(
+    () => specialtyDoctors.filter((doctor) => doctor.present || doctor.id === doctorId),
+    [specialtyDoctors, doctorId],
   )
 
-  const effectiveDoctorId = doctorId || specialtyDoctors[0]?.id || ''
+  const effectiveDoctorId = doctorId || bookingDoctors[0]?.id || ''
 
   useEffect(() => {
     let alive = true
@@ -65,10 +75,10 @@ export function VisitForm({
   const buildPayload = () => ({
     patientId: patient?.id,
     doctorId: effectiveDoctorId,
-    specialty,
+    specialty: effectiveSpecialty,
     date,
     slot,
-    time: slot.split(' – ')[0],
+    time: slot ? slotStart24(slot) : '',
     type,
     reason,
   })
@@ -93,7 +103,7 @@ export function VisitForm({
       {patient ? (
         <div className={s.patientBanner}>
           <span className="u-strong">{patient.fullName ?? `${patient.firstName} ${patient.lastName}`}</span>
-          <span className={s.patientBannerId}>{patient.id}</span>
+          <span className={s.patientBannerId}>{patientRef(patient.id)}</span>
           <span className="u-muted">{patient.phone}</span>
         </div>
       ) : null}
@@ -127,10 +137,10 @@ export function VisitForm({
         <Field label="Specialty" required htmlFor="visit-specialty">
           <Select
             id="visit-specialty"
-            value={specialty}
+            value={effectiveSpecialty}
             onChange={(event) => handleSpecialty(event.target.value)}
           >
-            {SPECIALTIES.map((option) => (
+            {(specialtyOptions.length ? specialtyOptions : SPECIALTIES).map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
@@ -149,7 +159,7 @@ export function VisitForm({
             invalid={Boolean(errors.doctorId)}
           >
             <option value="">Select a doctor</option>
-            {specialtyDoctors.map((doctor) => (
+            {bookingDoctors.map((doctor) => (
               <option key={doctor.id} value={doctor.id}>
                 {doctor.name} · {doctor.present ? 'Present' : 'Absent'}
               </option>
@@ -191,7 +201,7 @@ export function VisitForm({
         <InfoNote tone={slots.length ? 'blue' : 'danger'} icon={slots.length ? Info : CalendarCheck}>
           {slots.length ? (
             <>
-              {specialty} · {slots.length} available {slots.length === 1 ? 'slot' : 'slots'}:{' '}
+              {effectiveSpecialty} · {slots.length} available {slots.length === 1 ? 'slot' : 'slots'}:{' '}
               {slots.slice(0, 4).join(', ')}
               {slots.length > 4 ? '…' : '.'} Only available doctors and slots can be selected.
             </>
@@ -216,7 +226,12 @@ export function VisitForm({
             onClick={() => {
               if (validate()) onCheckIn?.(buildPayload())
             }}
-            disabled={busy || !slots.length}
+            disabled={busy || !slots.length || date !== todayKey()}
+            title={
+              date !== todayKey()
+                ? 'Check-in is only available for visits scheduled today'
+                : undefined
+            }
             type="button"
           >
             {checkInLabel}

@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { CalendarPlus, Pencil } from 'lucide-react'
-import { Button, LoadingPane } from '../../../components/common'
+import { Button, ErrorPane, LoadingPane } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
 import {
   ClinicalBaselineCard,
@@ -15,10 +15,11 @@ import s from '../reception.module.css'
 export default function PatientProfilePage() {
   const navigate = useNavigate()
   const { patientId } = useParams()
-  const { data: patient, loading } = useAsync(() => getPatient(patientId), [patientId])
+  const { data: patient, loading, error, reload } = useAsync(() => getPatient(patientId), [patientId])
   useDocumentTitle(patient?.fullName ?? 'Patient profile')
 
   if (loading) return <LoadingPane label="Loading patient record…" />
+  if (error) return <ErrorPane error={error} onRetry={reload} />
   if (!patient) return <p className="u-muted">Patient not found.</p>
 
   return (

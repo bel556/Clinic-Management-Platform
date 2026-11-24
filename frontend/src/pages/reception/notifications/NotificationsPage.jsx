@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorPane,
   LoadingPane,
   Tabs,
   useToast,
@@ -24,7 +25,7 @@ export default function NotificationsPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const [filter, setFilter] = useState('all')
-  const { data, loading, reload } = useAsync(() => listNotifications({ filter }), [filter])
+  const { data, loading, error, reload } = useAsync(() => listNotifications({ filter }), [filter])
 
   const counts = data?.counts ?? { all: 0, unread: 0, action: 0, completed: 0 }
 
@@ -36,11 +37,7 @@ export default function NotificationsPage() {
 
   const resolve = async (notification) => {
     await resolveNotification(notification.id, notification.actionKind)
-    toast.push(
-      notification.actionKind === 'handled'
-        ? 'Notification marked as handled.'
-        : 'Patient marked as informed.',
-    )
+    toast.push('Notification marked as read.')
     reload()
   }
 
@@ -51,7 +48,7 @@ export default function NotificationsPage() {
         description="Reschedules, cancellations, roster alerts and reception handoffs."
         actions={
           <Button variant="secondary" size="sm" icon={CheckCheck} onClick={markAll}>
-            Mark all as informed
+            Mark all as read
           </Button>
         }
       />
@@ -70,6 +67,8 @@ export default function NotificationsPage() {
       </div>
 
       {loading ? <LoadingPane label="Loading notifications…" /> : null}
+
+      {!loading && error ? <ErrorPane error={error} onRetry={reload} /> : null}
 
       {!loading ? (
         <Card padded={false}>

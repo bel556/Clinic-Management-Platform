@@ -15,7 +15,7 @@ import { PageHeader } from '../../../components/layout'
 import { getVisit } from '../../../services/visits'
 import { getPatientHistory } from '../../../services/patients'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { formatAge, formatDate, formatDateShort } from '../../../utils/format'
+import { formatAge, formatDate, formatDateShort, patientRef, visitRef } from '../../../utils/format'
 import s from '../doctorPages.module.css'
 
 export default function DoctorPatientHistoryPage() {
@@ -49,7 +49,7 @@ export default function DoctorPatientHistoryPage() {
       <Card>
         <h2 style={{ fontSize: 17 }}>{patient.fullName}</h2>
         <p className="u-small u-muted" style={{ marginTop: 2 }}>
-          {patient.id} · {formatDate(patient.birthDate)} ({formatAge(patient.birthDate)}) ·{' '}
+          {patientRef(patient.id)} · {formatDate(patient.birthDate)} ({formatAge(patient.birthDate)}) ·{' '}
           {patient.phone}
         </p>
         <div style={{ marginTop: 10 }}>
@@ -80,7 +80,7 @@ export default function DoctorPatientHistoryPage() {
                       <span className="u-small u-muted">· {entry.visit.specialty}</span>
                     </div>
                     <div className="u-xs u-muted" style={{ marginTop: 2 }}>
-                      {entry.visit.id} · {entry.visit.type} ·{' '}
+                      {visitRef(entry.visit.id)} · {entry.visit.type} ·{' '}
                       <StatusBadge status={entry.visit.status} />
                     </div>
                   </div>

@@ -1,30 +1,72 @@
 /**
- * Thin fetch wrapper. The sprint-1 UI is powered by the in-memory services in
- * this folder; when the FastAPI layer exposes these routes, switch the service
- * implementations to `apiFetch` without touching components.
+ * Single HTTP client for the FastAPI backend.
+ *
+ * `apiFetch` parses FastAPI's `{ detail }` error bodies, attaches
+ * `error.status`, and reports non-404 failures to the global error channel so
+ * the UI can surface them (see services/events.js).
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+import { reportError } from './events'
+
+export const API_BASE_URL =
+  import.meta.env?.VITE_API_BASE_URL ?? 'http://localhost:8000'
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
 
 export async function apiFetch(path, { method = 'GET', body, token } = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  } catch {
+    const error = new ApiError(
+      `Cannot reach the clinic API at ${API_BASE_URL}. Is the backend running?`,
+      0,
+    )
+    reportError(error)
+    throw error
+  }
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `Request failed with status ${response.status}`)
+    let detail = response.statusText
+    try {
+      const payload = await response.json()
+      detail = payload?.detail ?? JSON.stringify(payload)
+    } catch {
+      /* keep statusText */
+    }
+    const error = new ApiError(String(detail), response.status)
+    // 404 is a normal "nothing there" answer for list endpoints.
+    if (response.status !== 404) reportError(error)
+    throw error
   }
 
   if (response.status === 204) return null
   return response.json()
 }
 
-/** Simulated network latency so loading states behave like the real API. */
+/** Treat 404 as "no rows" for list endpoints that signal emptiness that way. */
+export async function apiFetchSafe(path, options, fallback = []) {
+  try {
+    return await apiFetch(path, options)
+  } catch (error) {
+    if (error.status === 404) return fallback
+    throw error
+  }
+}
+
+/** Simulated network latency so loading states behave like the real API (mock mode only). */
 export function delay(value, ms = 120) {
   return new Promise((resolve) => {
     setTimeout(() => resolve(value), ms)

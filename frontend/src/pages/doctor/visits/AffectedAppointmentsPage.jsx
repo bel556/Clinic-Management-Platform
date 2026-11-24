@@ -14,23 +14,23 @@ import {
 import { PageHeader } from '../../../components/layout'
 import { cancelDay, getAffectedVisits } from '../../../services/appointments'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { TOMORROW } from '../../../utils/constants'
-import { formatDayLong, formatTime } from '../../../utils/format'
+import { formatDayLong, formatTime, patientRef, tomorrowKey } from '../../../utils/format'
+import { useSession } from '../../../services/session'
 import s from '../doctorPages.module.css'
 
-const DOCTOR_ID = 'D-01'
 
 export default function AffectedAppointmentsPage() {
   useDocumentTitle('Affected appointments')
   const navigate = useNavigate()
   const toast = useToast()
-  const [day, setDay] = useState(TOMORROW)
+  const { doctorId: DOCTOR_ID, users } = useSession()
+  const [day, setDay] = useState(tomorrowKey())
   const [cancelOpen, setCancelOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
 
   const { data, loading, reload } = useAsync(
-    () => getAffectedVisits(DOCTOR_ID, day),
+    () => (DOCTOR_ID ? getAffectedVisits(DOCTOR_ID, day) : Promise.resolve(null)),
     [day],
   )
 
@@ -78,7 +78,7 @@ export default function AffectedAppointmentsPage() {
       />
 
       <InfoNote icon={Info}>
-        {data?.visits.length ?? 0} upcoming visits for Dr. Alexander Thorne ·{' '}
+        {data?.visits.length ?? 0} upcoming visits for {users.doctor.name} ·{' '}
         {data?.appointments ?? 0} appointments and {data?.consultations ?? 0} consultations. Only
         this doctor&apos;s visits on the selected day are affected.
       </InfoNote>
@@ -103,7 +103,7 @@ export default function AffectedAppointmentsPage() {
                     <td className="u-nowrap">{formatTime(visit.date)}</td>
                     <td>
                       <div className="u-strong">{visit.patientName}</div>
-                      <div className="u-xs u-muted u-mono">{visit.patientId}</div>
+                      <div className="u-xs u-muted u-mono">{patientRef(visit.patientId)}</div>
                     </td>
                     <td>{visit.type}</td>
                     <td>{visit.billing}</td>
@@ -158,7 +158,7 @@ export default function AffectedAppointmentsPage() {
         busy={busy}
         eyebrow="Doctor · Day-wide change"
         title={`Cancel all ${data?.visits.length ?? 0} appointments?`}
-        description="All appointments and consultations on this day will be cancelled for Dr. Alexander Thorne. Today's queue is not affected."
+        description={`All appointments and consultations on this day will be cancelled for ${users.doctor.name}. Today's queue is not affected.`}
         icon={Ban}
         tone="danger"
         confirmDisabled={!reason.trim()}

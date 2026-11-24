@@ -6,6 +6,7 @@ export { Card } from './Card'
 export { DataTable, Pagination } from './DataTable'
 export {
   EmptyState,
+  ErrorPane,
   InfoNote,
   LoadingPane,
   SectionHeader,
@@ -16,3 +17,4 @@ export { ConfirmDialog, Modal } from './Modal'
 export { SearchInput } from './SearchInput'
 export { Tabs, UnderlineTabs } from './Tabs'
 export { ToastProvider, useToast } from './Toast'
+export { ErrorBoundary } from './ErrorBoundary'

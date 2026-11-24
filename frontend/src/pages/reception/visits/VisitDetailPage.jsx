@@ -5,26 +5,38 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  ErrorPane,
   InfoNote,
   LoadingPane,
 } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
 import { DetailRow, TicketPreview } from '../../../components/visit/VisitSummary'
-import { getVisit, updateVisit } from '../../../services/visits'
+import { getVisit, setBilling, updateVisit } from '../../../services/visits'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { formatDate, formatTime } from '../../../utils/format'
+import { formatDate, formatTime, patientRef, visitRef } from '../../../utils/format'
 import s from '../reception.module.css'
 
 export default function VisitDetailPage() {
   const navigate = useNavigate()
   const { visitId } = useParams()
-  const { data: visit, loading, reload } = useAsync(() => getVisit(visitId), [visitId])
+  const { data: visit, loading, error, reload } = useAsync(() => getVisit(visitId), [visitId])
   const [cancelOpen, setCancelOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  useDocumentTitle(visit ? `Visit ${visit.id}` : 'Visit details')
+  useDocumentTitle(visit ? `Visit ${visitRef(visit.id)}` : 'Visit details')
 
   if (loading) return <LoadingPane label="Loading visit…" />
+  if (error) return <ErrorPane error={error} onRetry={reload} />
   if (!visit) return <p className="u-muted">Visit not found.</p>
+
+  const toggleBilling = async () => {
+    setBusy(true)
+    try {
+      await setBilling(visit.id, visit.billing === 'Paid' ? 'Unpaid' : 'Paid')
+      reload()
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const confirmCancel = async () => {
     setBusy(true)
@@ -43,7 +55,7 @@ export default function VisitDetailPage() {
         title="Visit details"
         breadcrumb={[
           { label: 'Visits', to: '/reception/visits' },
-          { label: visit.id },
+          { label: visitRef(visit.id) },
         ]}
         backTo="/reception/visits"
         backLabel="Back to Today's Visits"
@@ -55,7 +67,7 @@ export default function VisitDetailPage() {
             <div>
               <h2 style={{ fontSize: 17 }}>{visit.patientName}</h2>
               <p className="u-small u-muted">
-                {visit.patientId} · {visit.patientPhone}
+                {patientRef(visit.patientId)} · {visit.patientPhone}
               </p>
               <div className="u-row u-g6" style={{ marginTop: 7 }}>
                 <span className="u-small u-muted">Visit status</span>
@@ -75,7 +87,7 @@ export default function VisitDetailPage() {
           </div>
 
           <div className="u-grid2">
-            <DetailRow label="Visit ID">{visit.id}</DetailRow>
+            <DetailRow label="Visit ID">{visitRef(visit.id)}</DetailRow>
             <DetailRow label="Visit type">{visit.type}</DetailRow>
             <DetailRow label="Date and time">
               {formatDate(visit.date)} · {formatTime(visit.date)}
@@ -94,7 +106,7 @@ export default function VisitDetailPage() {
           <div style={{ marginTop: 14 }}>
             <InfoNote>
               Queue number is assigned at check-in. Tickets are only available for today&apos;s
-              visits. Only Finance can change payment status.
+              visits.
             </InfoNote>
           </div>
 
@@ -106,6 +118,14 @@ export default function VisitDetailPage() {
               onClick={() => navigate(`/reception/visits/${visit.id}/edit`)}
             >
               Modify visit
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={toggleBilling}
+              disabled={busy}
+            >
+              {visit.billing === 'Paid' ? 'Mark as unpaid' : 'Mark as paid'}
             </Button>
             <Button
               variant="dangerGhost"
@@ -146,7 +166,7 @@ export default function VisitDetailPage() {
         summary={
           <>
             <strong>
-              {visit.id} · {visit.patientName}
+              {visitRef(visit.id)} · {visit.patientName}
             </strong>
             <br />
             {visit.type} · {formatDate(visit.date)} · {visit.timeLabel}

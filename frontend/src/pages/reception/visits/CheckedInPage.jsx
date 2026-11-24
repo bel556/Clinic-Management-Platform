@@ -9,7 +9,7 @@ import {
 } from '../../../components/visit/VisitSummary'
 import { getVisit } from '../../../services/visits'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { formatDate } from '../../../utils/format'
+import { formatDate, visitRef } from '../../../utils/format'
 import s from '../reception.module.css'
 import v from '../../../components/visit/visit.module.css'
 
@@ -28,7 +28,7 @@ export default function CheckedInPage() {
         title="Patient checked in"
         breadcrumb={[
           { label: 'Visits', to: '/reception/visits' },
-          { label: `Visit ${visit.id}` },
+          { label: `Visit ${visitRef(visit.id)}` },
         ]}
       />
 

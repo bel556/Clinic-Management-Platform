@@ -43,7 +43,7 @@ export function DoctorList({ doctors, selectedId, onSelect, loading }) {
               {doctor.present ? <PresenceDot present label="Present" /> : null}
             </span>
             <span className={s.doctorMeta}>
-              {doctor.specialty} · {doctor.suite ?? doctor.room}
+              {doctor.specialty} · {doctor.room}
             </span>
           </span>
           <span className={s.doctorRight}>
@@ -54,7 +54,6 @@ export function DoctorList({ doctors, selectedId, onSelect, loading }) {
             ) : (
               <Badge tone="slate">{doctor.note ?? 'Absent'}</Badge>
             )}
-            <span className="u-xs u-muted2">Sync 5s</span>
           </span>
         </button>
       ))}

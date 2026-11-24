@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Button, Field, Input, ReadOnly, Select, Textarea } from '../common'
+import { patientRef } from '../../utils/format'
 import s from './patient.module.css'
 
-const GENDERS = ['Female', 'Male', 'Other']
+const GENDERS = ['Female', 'Male']
 
 const emptyPatient = {
   firstName: '',
@@ -13,7 +14,12 @@ const emptyPatient = {
   email: '',
   emergencyContact: '',
   additionalInfo: '',
+  bloodType: '',
+  allergies: '',
+  conditions: '',
 }
+
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 function toFormValues(patient) {
   if (!patient) return emptyPatient
@@ -26,6 +32,9 @@ function toFormValues(patient) {
     email: patient.email ?? '',
     emergencyContact: patient.emergencyContact ?? '',
     additionalInfo: patient.additionalInfo === 'No additional information' ? '' : patient.additionalInfo ?? '',
+    bloodType: patient.bloodType ?? '',
+    allergies: (patient.allergies ?? []).join('\n'),
+    conditions: (patient.conditions ?? []).join('\n'),
   }
 }
 
@@ -68,7 +77,7 @@ export function PatientForm({
         {patient ? (
           <Field label="Patient ID" className={s.formGridFull}>
             <ReadOnly>
-              {patient.id} — read-only, assigned when the record was created
+              {patientRef(patient.id)} — read-only, assigned when the record was created
             </ReadOnly>
           </Field>
         ) : null}
@@ -152,13 +161,51 @@ export function PatientForm({
           />
         </Field>
 
-        <Field label="Additional information (optional)" htmlFor="additional" className={s.formGridFull}>
-          <Textarea
+        <Field label="Blood type" htmlFor="bloodType">
+          <Select id="bloodType" value={values.bloodType} onChange={set('bloodType')}>
+            <option value="">Not recorded</option>
+            {BLOOD_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Additional information (optional)" htmlFor="additional">
+          <Input
             id="additional"
-            rows={3}
             value={values.additionalInfo}
             onChange={set('additionalInfo')}
-            placeholder="No additional information"
+            placeholder="Accessibility needs, notes…"
+          />
+        </Field>
+
+        <Field
+          label="Known allergies (one per line)"
+          htmlFor="allergies"
+          className={s.formGridFull}
+        >
+          <Textarea
+            id="allergies"
+            rows={2}
+            value={values.allergies}
+            onChange={set('allergies')}
+            placeholder="Penicillin (severe rash)"
+          />
+        </Field>
+
+        <Field
+          label="Chronic conditions (one per line)"
+          htmlFor="conditions"
+          className={s.formGridFull}
+        >
+          <Textarea
+            id="conditions"
+            rows={2}
+            value={values.conditions}
+            onChange={set('conditions')}
+            placeholder="Essential hypertension"
           />
         </Field>
       </div>

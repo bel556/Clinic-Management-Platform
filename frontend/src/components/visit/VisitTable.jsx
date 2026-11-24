@@ -1,5 +1,6 @@
 import { Check, Pencil, Printer, RotateCcw, Trash2, X } from 'lucide-react'
 import { Button, DataTable, IconButton, StatusBadge, BillingBadge } from '../common'
+import { patientRef } from '../../utils/format'
 import s from './visit.module.css'
 
 export function VisitTable({
@@ -36,7 +37,7 @@ export function VisitTable({
       render: (visit) => (
         <div className={s.patientCell}>
           <span className={s.patientName}>{visit.patientName}</span>
-          <span className={s.subtle}>{visit.patientId}</span>
+          <span className={s.subtle}>{patientRef(visit.patientId)}</span>
         </div>
       ),
     },
@@ -75,9 +76,9 @@ export function VisitTable({
       align: 'right',
       render: (visit) => (
         <div className={s.actions} onClick={(event) => event.stopPropagation()}>
-          {visit.status === 'Upcoming' ? (
+          {visit.status === 'Upcoming' && onCheckIn ? (
             <>
-              <Button variant="primary" size="sm" onClick={() => onCheckIn?.(visit)}>
+              <Button variant="primary" size="sm" onClick={() => onCheckIn(visit)}>
                 Check-in
               </Button>
               {onLateCheckIn ? (
@@ -88,27 +89,29 @@ export function VisitTable({
             </>
           ) : null}
 
-          {visit.status === 'Present' ? (
+          {visit.status === 'Present' && onPrint ? (
             <Button
               variant="secondary"
               size="sm"
               icon={Printer}
-              onClick={() => onPrint?.(visit)}
+              onClick={() => onPrint(visit)}
             >
               Print Ticket
             </Button>
           ) : null}
 
-          {visit.status === 'Missed' ? (
+          {visit.status === 'Missed' && (onLateCheckIn || onReschedule) ? (
             <>
               {onLateCheckIn ? (
                 <Button variant="secondary" size="sm" onClick={() => onLateCheckIn(visit)}>
                   Late check-in
                 </Button>
               ) : null}
-              <Button variant="secondary" size="sm" icon={RotateCcw} onClick={() => onReschedule?.(visit)}>
-                Reschedule
-              </Button>
+              {onReschedule ? (
+                <Button variant="secondary" size="sm" icon={RotateCcw} onClick={() => onReschedule(visit)}>
+                  Reschedule
+                </Button>
+              ) : null}
             </>
           ) : null}
 
@@ -121,7 +124,6 @@ export function VisitTable({
               onClick={() => onDelete(visit)}
             />
           ) : null}
-          {onPrint && visit.status === 'Present' ? null : null}
         </div>
       ),
     },

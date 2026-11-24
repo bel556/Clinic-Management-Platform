@@ -5,15 +5,24 @@ import { Button, Card, ConfirmDialog, Toggle } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
 import { AccountInfoCard } from '../../../components/profile/ProfileCards'
 import { useSession } from '../../../services/session'
+import { updateDoctorAvailability } from '../../../services/doctors'
 import { useDocumentTitle } from '../../../utils/hooks'
 import p from '../../../components/profile/profile.module.css'
 
 export default function DoctorAccountPage() {
-  useDocumentTitle('Doctor profile')
+  useDocumentTitle('Doctor account')
   const navigate = useNavigate()
   const { users, availability, setAvailability, logOut } = useSession()
   const user = users.doctor
   const [logoutOpen, setLogoutOpen] = useState(false)
+
+  const toggleAvailability = async (next) => {
+    try {
+      await updateDoctorAvailability(user.id, next)
+    } finally {
+      setAvailability(next)
+    }
+  }
 
   const confirmLogout = () => {
     setLogoutOpen(false)
@@ -24,8 +33,8 @@ export default function DoctorAccountPage() {
   return (
     <>
       <PageHeader
-        title="Doctor profile"
-        description="Your account details and clinic presence."
+        title="Doctor account"
+        description="Account details and clinic presence."
         backTo="/doctor/profile"
         backLabel="Back to full profile"
       />
@@ -35,16 +44,16 @@ export default function DoctorAccountPage() {
           <AccountInfoCard
             user={user}
             role={user.role}
-            location={user.workLocation}
-            note="Managed by Clinic Administration. Name and email are read-only."
+            location={user.room || '—'}
+            note="Name, email and credentials are managed by clinic administration."
           />
 
           <Card title="Clinical availability" icon={ShieldCheck}>
             <Toggle
               checked={availability}
-              onChange={setAvailability}
+              onChange={toggleAvailability}
               label="Available for scheduling"
-              description="Manage real-time scheduling status for reception and emergency routing."
+              description="Reception uses this status when assigning new visits."
             />
           </Card>
 
@@ -61,31 +70,23 @@ export default function DoctorAccountPage() {
         </div>
 
         <div className={p.profileSide}>
-          <Card title="Account summary">
-            <div className={p.cardRow}>
+          <Card title="Directory information">
+            <div className="u-grid2">
               <div>
-                <p className={p.rowLabel}>Role</p>
-                <p className={p.rowValue}>{user.role}</p>
+                <p className={p.fieldLabel}>Specialty</p>
+                <div className={p.fieldValue}>{user.department}</div>
               </div>
-            </div>
-            <div className={p.cardRow}>
               <div>
-                <p className={p.rowLabel}>Work location</p>
-                <p className={p.rowValue}>{user.workLocation}</p>
+                <p className={p.fieldLabel}>Phone</p>
+                <div className={p.fieldValue}>{user.phone || '—'}</div>
               </div>
-            </div>
-            <div className={p.cardRow}>
               <div>
-                <p className={p.rowLabel}>Consultation slot</p>
-                <p className={p.rowValue}>{user.slotLength}</p>
+                <p className={p.fieldLabel}>Schedule from</p>
+                <div className={p.fieldValue}>{user.startDay || '—'}</div>
               </div>
-            </div>
-            <div className={p.cardRow}>
               <div>
-                <p className={p.rowLabel}>Shift</p>
-                <p className={p.rowValue}>
-                  {user.shiftLabel} · {user.shiftHours}
-                </p>
+                <p className={p.fieldLabel}>Schedule to</p>
+                <div className={p.fieldValue}>{user.endDay || '—'}</div>
               </div>
             </div>
           </Card>
@@ -98,7 +99,7 @@ export default function DoctorAccountPage() {
         onConfirm={confirmLogout}
         eyebrow="End your session"
         title="Log out of CuraPulse?"
-        description="Your session on this workstation will end. Save any unsaved clinical notes before leaving."
+        description="Your session on this workstation will end."
         icon={LogOut}
         tone="danger"
         summary={
@@ -106,17 +107,11 @@ export default function DoctorAccountPage() {
             <strong>{user.name}</strong>
             <br />
             {user.email}
-            <br />
-            Doctor · {user.workLocation}
           </>
         }
         confirmLabel="Log out"
         cancelLabel="Stay logged in"
-      >
-        <p className="u-xs u-muted" style={{ marginTop: 10 }}>
-          Logging out does not cancel appointments or change your saved availability status.
-        </p>
-      </ConfirmDialog>
+      />
     </>
   )
 }
