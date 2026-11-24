@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   CalendarPlus,
   ClipboardList,
@@ -14,9 +14,11 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  ErrorPane,
   EmptyState,
   IconButton,
   InfoNote,
+  Input,
   LoadingPane,
   Modal,
   Pagination,
@@ -27,15 +29,23 @@ import { PageHeader } from '../../../components/layout'
 import { VisitTable } from '../../../components/visit/VisitTable'
 import { TicketPreview } from '../../../components/visit/VisitSummary'
 import { getVisit, checkInVisit, deleteVisit, listVisitBoard } from '../../../services/visits'
+import { useSession } from '../../../services/session'
 import { listDoctors } from '../../../services/doctors'
 import { useAsync, useDocumentTitle, useDebouncedValue } from '../../../utils/hooks'
-import { DEMO_NOW } from '../../../utils/constants'
-import { formatDayLong } from '../../../utils/format'
+import { formatDayLong, patientRef, todayKey, visitRef } from '../../../utils/format'
 import s from '../reception.module.css'
 
 export default function VisitsPage() {
-  useDocumentTitle("Today's Visits")
+  useDocumentTitle('Visits')
+  const { users } = useSession()
   const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const day = params.get('day') || todayKey()
+  const setDay = (next) => {
+    const nextParams = new URLSearchParams(params)
+    nextParams.set('day', next)
+    setParams(nextParams, { replace: true })
+  }
   const [status, setStatus] = useState('all')
   const [query, setQuery] = useState('')
   const [doctorId, setDoctorId] = useState('all')
@@ -48,9 +58,17 @@ export default function VisitsPage() {
 
   const debouncedQuery = useDebouncedValue(query, 180)
 
-  const { data, loading, reload } = useAsync(
-    () => listVisitBoard({ status, query: debouncedQuery, doctorId, page, pageSize: 8 }),
-    [status, debouncedQuery, doctorId, page],
+  const { data, loading, error, reload } = useAsync(
+    () =>
+      listVisitBoard({
+        status,
+        query: debouncedQuery,
+        doctorId,
+        page,
+        pageSize: 8,
+        day,
+      }),
+    [status, debouncedQuery, doctorId, page, day],
   )
   const { data: doctors } = useAsync(() => listDoctors(), [])
 
@@ -97,15 +115,43 @@ export default function VisitsPage() {
     setPrintVisit(full)
   }
 
+  const exportLog = () => {
+    const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+    const header = ['Visit', 'Patient ID', 'Patient', 'Doctor', 'Date', 'Type', 'Status', 'Billing']
+    const lines = rows.map((visit) =>
+      [
+        visitRef(visit.id),
+        patientRef(visit.patientId),
+        visit.patientName,
+        visit.doctorName,
+        visit.date,
+        visit.type,
+        visit.status,
+        visit.billing,
+      ]
+        .map(cell)
+        .join(','),
+    )
+    const blob = new Blob([[header.map(cell).join(','), ...lines].join('\n')], {
+      type: 'text/csv;charset=utf-8',
+    })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `visits-${todayKey()}.csv`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <>
       <PageHeader
-        title="Today's Visits"
-        description={`${formatDayLong(DEMO_NOW)} · Manage front desk check-in, patient queues, and appointment schedules.`}
+        title="Visits"
+        description={`${formatDayLong(day)} · Manage front desk check-in, patient queues, and appointment schedules.`}
         actions={
           <>
             {status === 'Missed' ? (
-              <Button variant="secondary" size="sm" icon={Download}>
+              <Button variant="secondary" size="sm" icon={Download} onClick={exportLog}>
                 Export Log
               </Button>
             ) : null}
@@ -113,7 +159,7 @@ export default function VisitsPage() {
               variant="primary"
               size="sm"
               icon={CalendarPlus}
-              onClick={() => navigate('/reception/visits/new')}
+              onClick={() => navigate(`/reception/visits/new?date=${day}`)}
             >
               Add Visit
             </Button>
@@ -133,6 +179,24 @@ export default function VisitsPage() {
               }}
             />
             <div className="u-grow" />
+            <div className="u-row u-g8">
+              <span className="u-xs u-muted">Day</span>
+              <Input
+                type="date"
+                value={day}
+                onChange={(event) => {
+                  setDay(event.target.value || todayKey())
+                  setPage(1)
+                  setSelectedId(null)
+                }}
+                style={{ width: 160 }}
+              />
+              {day !== todayKey() ? (
+                <Button variant="secondary" size="sm" onClick={() => setDay(todayKey())}>
+                  Today
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           <div className={s.boardToolbar}>
@@ -177,6 +241,8 @@ export default function VisitsPage() {
 
           {loading ? (
             <LoadingPane label="Loading today's visits…" />
+          ) : error ? (
+            <ErrorPane error={error} onRetry={reload} />
           ) : (
             <VisitTable
               rows={rows}
@@ -184,9 +250,9 @@ export default function VisitsPage() {
                 if (visit.status === 'Present') setSelectedId(visit.id)
                 else navigate(`/reception/visits/${visit.id}`)
               }}
-              onCheckIn={setCheckInTarget}
-              onLateCheckIn={setCheckInTarget}
-              onPrint={openPrintFor}
+              onCheckIn={day === todayKey() ? setCheckInTarget : undefined}
+              onLateCheckIn={day === todayKey() ? setCheckInTarget : undefined}
+              onPrint={day === todayKey() ? openPrintFor : undefined}
               onEdit={(visit) => navigate(`/reception/visits/${visit.id}/edit`)}
               onDelete={setDeleteTarget}
               onReschedule={(visit) => navigate(`/reception/visits/${visit.id}/edit`)}
@@ -202,8 +268,8 @@ export default function VisitsPage() {
 
           <div className={s.boardToolbar}>
             <span className="u-xs u-muted">
-              Showing {rows.length} of {data?.total ?? 0} visits · Active Front Desk: Sarah Jenkins
-              (Ext. 102)
+              Showing {rows.length} of {data?.total ?? 0} visits · Active Front Desk:{' '}
+              {users.receptionist.name}
             </span>
             <span className="u-right">
               <Pagination page={data?.page ?? 1} pageCount={data?.pageCount ?? 1} onChange={setPage} />
@@ -218,7 +284,7 @@ export default function VisitsPage() {
             action={<span className="u-xs u-muted">Front Desk Printer</span>}
             bodyClassName={s.pad}
           >
-            {panelVisit ? (
+            {day === todayKey() && panelVisit ? (
               <div className="u-col u-g12" style={{ alignItems: 'center' }}>
                 <TicketPreview visit={panelVisit} showPrinter />
                 <Button
@@ -258,7 +324,7 @@ export default function VisitsPage() {
           checkInTarget ? (
             <>
               <strong>
-                {checkInTarget.patientName} · {checkInTarget.patientId}
+                {checkInTarget.patientName} · {patientRef(checkInTarget.patientId)}
               </strong>
               <br />
               {checkInTarget.type} · Today, {checkInTarget.timeLabel}

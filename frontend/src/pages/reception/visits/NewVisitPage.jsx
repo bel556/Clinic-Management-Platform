@@ -12,9 +12,10 @@ import {
 import { PageHeader } from '../../../components/layout'
 import { VisitForm } from '../../../components/visit/VisitForm'
 import { listDoctors } from '../../../services/doctors'
-import { getPatient, searchPatients } from '../../../services/patients'
+import { getPatient, listPatientDirectory, searchPatients } from '../../../services/patients'
 import { createVisit } from '../../../services/visits'
 import { useAsync, useDebouncedValue, useDocumentTitle } from '../../../utils/hooks'
+import { patientRef } from '../../../utils/format'
 import s from '../reception.module.css'
 
 export default function NewVisitPage() {
@@ -22,6 +23,7 @@ export default function NewVisitPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const patientId = params.get('patientId')
+  const dateParam = params.get('date')
   const [dirty, setDirty] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -37,10 +39,15 @@ export default function NewVisitPage() {
     () => (debounced.trim() ? searchPatients(debounced) : Promise.resolve([])),
     [debounced],
   )
+  const { data: directory } = useAsync(
+    () => (patientId ? Promise.resolve(null) : listPatientDirectory()),
+    [patientId],
+  )
+  const visitsHref = dateParam ? `/reception/visits?day=${dateParam}` : '/reception/visits'
 
   const requestCancel = () => {
     if (dirty) setDiscardOpen(true)
-    else navigate('/reception/visits')
+    else navigate(visitsHref)
   }
 
   const goToVisit = async (payload, checkIn) => {
@@ -59,9 +66,9 @@ export default function NewVisitPage() {
         <PageHeader
           title="Add patient visit"
           description="Start by selecting the patient this visit belongs to."
-          backTo="/reception/visits"
-          backLabel="Back to Today's Visits"
-          breadcrumb={[{ label: 'Visits', to: '/reception/visits' }, { label: 'New visit' }]}
+          backTo={visitsHref}
+          backLabel="Back to visits"
+          breadcrumb={[{ label: 'Visits', to: visitsHref }, { label: 'New visit' }]}
         />
         <Card title="Select patient">
           <SearchInput
@@ -84,7 +91,12 @@ export default function NewVisitPage() {
                     background: '#fff',
                     textAlign: 'left',
                   }}
-                  onClick={() => setParams({ patientId: match.id })}
+                  onClick={() =>
+                    setParams({
+                      patientId: match.id,
+                      ...(dateParam ? { date: dateParam } : {}),
+                    })
+                  }
                 >
                   <span>
                     <span className="u-strong">{match.fullName}</span>{' '}
@@ -121,9 +133,47 @@ export default function NewVisitPage() {
             )}
           </div>
         </Card>
+
+        {!debounced && directory?.recent?.length ? (
+          <Card title="Recent patients" className={s.quickPickCard}>
+            <div className="u-col u-g6">
+              {directory.recent.map((match) => (
+                <button
+                  key={match.id}
+                  type="button"
+                  className="u-between"
+                  style={{
+                    padding: '9px 11px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    background: '#fff',
+                    textAlign: 'left',
+                  }}
+                  onClick={() =>
+                    setParams({
+                      patientId: match.id,
+                      ...(dateParam ? { date: dateParam } : {}),
+                    })
+                  }
+                >
+                  <span>
+                    <span className="u-strong">{match.fullName}</span>{' '}
+                    <span className="u-mono u-small u-muted">{match.id}</span>
+                    <br />
+                    <span className="u-small u-muted">{match.phone}</span>
+                  </span>
+                  <span className="u-row u-g6 u-teal u-small">
+                    <Search size={12} /> Select
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        ) : null}
+
         <div className={s.stackSm}>
           <div className={s.toolbar}>
-            <Button variant="secondary" size="sm" onClick={() => navigate('/reception/visits')}>
+            <Button variant="secondary" size="sm" onClick={() => navigate(visitsHref)}>
               Cancel
             </Button>
           </div>
@@ -153,6 +203,7 @@ export default function NewVisitPage() {
         <VisitForm
           patient={patient}
           doctors={doctors ?? []}
+          initial={dateParam ? { dayKey: dateParam } : undefined}
           onSubmit={(payload) => goToVisit(payload, false)}
           onCheckIn={(payload) => goToVisit(payload, true)}
           onCancel={requestCancel}
@@ -168,7 +219,7 @@ export default function NewVisitPage() {
         onClose={() => setDiscardOpen(false)}
         onConfirm={() => {
           setDiscardOpen(false)
-          navigate('/reception/visits')
+          navigate(visitsHref)
         }}
         eyebrow="Unsaved visit"
         title="Discard this visit?"
@@ -178,7 +229,7 @@ export default function NewVisitPage() {
         summary={
           <>
             <strong>
-              {patient.fullName} · {patient.id}
+              {patient.fullName} · {patientRef(patient.id)}
             </strong>
             <br />
             New visit · {patient.primaryPhysician ?? 'Unassigned doctor'}

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { Button, EmptyState, InfoNote, StatusBadge } from '../common'
 import { formatAge, formatDate, formatTime } from '../../utils/format'
-import { VitalsStrip } from './QueueList'
+import { patientRef } from '../../utils/format'
 import s from './queue.module.css'
 
 export function ConsultationPanel({
@@ -49,7 +49,7 @@ export function ConsultationPanel({
         <span className={s.consultQueue}>{visit.queueLabel}</span>
         <div className="u-grow">
           <h2 className={s.consultName}>
-            {visit.patientName} <span className={s.consultId}>({visit.patientId})</span>
+            {visit.patientName} <span className={s.consultId}>({patientRef(visit.patientId)})</span>
           </h2>
           <div className={s.consultMeta}>
             <span>{formatAge(patient?.birthDate)}</span>
@@ -69,10 +69,26 @@ export function ConsultationPanel({
         View Full Patient Profile &amp; History
       </button>
 
-      <VitalsStrip
-        vitals={patient?.vitals}
-        recordedAt={patient?.vitals?.recordedAt ? formatDate(patient.vitals.recordedAt) : null}
-      />
+      <div className={s.panelSection}>
+        <div className={s.panelSectionHead}>
+          <span className="u-row u-g6">
+            <History size={13} />
+            Clinical baseline
+          </span>
+          <span className={s.panelSectionSub}>Blood type {patient?.bloodType || '—'}</span>
+        </div>
+        <div className={s.consultMeta} style={{ flexWrap: 'wrap', gap: 8 }}>
+          <span>
+            Allergies:{' '}
+            {patient?.allergies?.length ? patient.allergies.join(' · ') : 'none recorded'}
+          </span>
+          <span>·</span>
+          <span>
+            Conditions:{' '}
+            {patient?.conditions?.length ? patient.conditions.join(' · ') : 'none recorded'}
+          </span>
+        </div>
+      </div>
 
       <div className={s.panelSection}>
         <div className={s.panelSectionHead}>

@@ -15,26 +15,25 @@ import {
   useToast,
 } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
-import { STAFF } from '../../../services/mockDb'
 import { availableSlots } from '../../../services/appointments'
 import { getPatient, searchPatients } from '../../../services/patients'
 import { createVisit } from '../../../services/visits'
 import { useAsync, useDebouncedValue, useDocumentTitle } from '../../../utils/hooks'
-import { formatDayLong } from '../../../utils/format'
+import { formatDayLong, patientRef, tomorrowKey, visitRef } from '../../../utils/format'
+import { useSession } from '../../../services/session'
 import s from '../doctorPages.module.css'
-
-const DOCTOR_ID = 'D-01'
-const DOCTOR_NAME = STAFF.doctor.name
 
 export default function AssignAppointmentPage() {
   useDocumentTitle('Assign new appointment')
   const navigate = useNavigate()
   const toast = useToast()
+  const { doctorId: DOCTOR_ID, users } = useSession()
+  const DOCTOR_NAME = users.doctor.name
   const [params, setParams] = useSearchParams()
   const patientId = params.get('patientId')
 
   const [query, setQuery] = useState('')
-  const [date, setDate] = useState('2024-10-30')
+  const [date, setDate] = useState(tomorrowKey())
   const [type, setType] = useState('Appointment')
   const [slot, setSlot] = useState('')
   const [reason, setReason] = useState('')
@@ -52,7 +51,7 @@ export default function AssignAppointmentPage() {
     [debounced],
   )
   const { data: slots, loading: slotsLoading } = useAsync(
-    () => (date ? availableSlots(DOCTOR_ID, date) : Promise.resolve([])),
+    () => (date && DOCTOR_ID ? availableSlots(DOCTOR_ID, date) : Promise.resolve([])),
     [date],
   )
 
@@ -73,12 +72,11 @@ export default function AssignAppointmentPage() {
         doctorId: DOCTOR_ID,
         date,
         slot,
-        time: slot.split(' – ')[0],
         type,
         reason: [reason, notes].filter(Boolean).join(' — '),
         status: 'Upcoming',
       })
-      toast.push(`Appointment ${visit.id} created and synced with reception.`)
+      toast.push(`Appointment ${visitRef(visit.id)} created and synced with reception.`)
       navigate('/doctor/visits')
     } finally {
       setBusy(false)
@@ -153,7 +151,7 @@ export default function AssignAppointmentPage() {
           <div className={s.selectedPatient} style={{ marginBottom: 12 }}>
             <UserRound size={13} />
             <span className={s.selectedPatientName}>{patient.fullName}</span>
-            <span className="u-mono u-xs u-muted">{patient.id}</span>
+            <span className="u-mono u-xs u-muted">{patientRef(patient.id)}</span>
             <span className={s.muted}>{patient.phone}</span>
             <button
               type="button"
@@ -200,7 +198,11 @@ export default function AssignAppointmentPage() {
             </Field>
 
             <Field label="Doctor" htmlFor="assign-doctor">
-              <Input id="assign-doctor" value={`${DOCTOR_NAME} · Cardiology`} readOnly />
+              <Input
+                id="assign-doctor"
+                value={`${DOCTOR_NAME} · ${users.doctor.specialty || 'No specialty'}`}
+                readOnly
+              />
             </Field>
 
             <Field label="Visit type" htmlFor="assign-type">

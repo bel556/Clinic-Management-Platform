@@ -5,13 +5,14 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorPane,
   InfoNote,
   LoadingPane,
   SearchInput,
 } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
 import { PatientTable } from '../../../components/patient/PatientTable'
-import { listPatientDirectory, matchPatient } from '../../../services/patients'
+import { listPatientDirectory, searchPatients } from '../../../services/patients'
 import { useAsync, useDebouncedValue, useDocumentTitle } from '../../../utils/hooks'
 import s from '../reception.module.css'
 
@@ -20,12 +21,13 @@ export default function PatientsPage() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 180)
-  const { data, loading } = useAsync(() => listPatientDirectory(), [])
+  const { data, loading, error, reload } = useAsync(() => listPatientDirectory(), [])
+  const { data: searchResults, loading: searchLoading } = useAsync(
+    () => (debounced.trim() ? searchPatients(debounced) : Promise.resolve([])),
+    [debounced],
+  )
 
-  const results = useMemo(() => {
-    if (!data || !debounced.trim()) return []
-    return data.patients.filter((patient) => matchPatient(patient, debounced))
-  }, [data, debounced])
+  const results = useMemo(() => searchResults ?? [], [searchResults])
 
   const openPatient = (patient) => navigate(`/reception/patients/${patient.id}`)
   const addVisit = (patient) => navigate(`/reception/visits/new?patientId=${patient.id}`)
@@ -57,7 +59,9 @@ export default function PatientsPage() {
         />
       </div>
 
-      {loading ? <LoadingPane label="Loading patients…" /> : null}
+      {loading || (searching && searchLoading) ? <LoadingPane label="Loading patients…" /> : null}
+
+      {!loading && error ? <ErrorPane error={error} onRetry={reload} /> : null}
 
       {!loading && searching && !results.length ? (
         <div className={s.stack}>
@@ -109,8 +113,8 @@ export default function PatientsPage() {
               <span className={s.sectionLineIcon}>
                 <Sparkles size={13} />
               </span>
-              Recently created
-              <span className={s.sectionLineMeta}>4 records today</span>
+              Latest registrations
+              <span className={s.sectionLineMeta}>Newest records first</span>
             </div>
             <PatientTable rows={data.recent} onOpen={openPatient} onAddVisit={addVisit} bare />
           </div>

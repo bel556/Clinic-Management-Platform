@@ -1,5 +1,5 @@
 import { Button, DataTable } from '../common'
-import { formatAge, formatDate } from '../../utils/format'
+import { formatAge, formatDate, patientRef } from '../../utils/format'
 import s from './patient.module.css'
 
 export function PatientTable({ rows, onOpen, onAddVisit, empty, bare = false }) {
@@ -7,7 +7,7 @@ export function PatientTable({ rows, onOpen, onAddVisit, empty, bare = false }) 
     {
       key: 'id',
       header: 'Patient ID',
-      render: (patient) => <span className="u-nowrap">{patient.id}</span>,
+      render: (patient) => <span className="u-nowrap">{patientRef(patient.id)}</span>,
     },
     {
       key: 'name',

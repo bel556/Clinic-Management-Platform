@@ -2,6 +2,7 @@ from src.services.patient_service import (
     create_patient,
     update_patient,
     get_patient_info,
+    get_patient_overview,
     get_all_patients,
     get_patient_visits,
     search_patients,
@@ -19,10 +20,10 @@ patient_router = APIRouter()
 def list_patients(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    order: str = Query('name', pattern='^(name|recent)$'),
     conn=Depends(get_connection),
 ):
-    patients = get_all_patients(conn, limit=limit, offset=offset)
-    return patients
+    return get_all_patients(conn, limit=limit, offset=offset, order=order)
 
 
 @patient_router.get("/patients/search/{query}")
@@ -34,6 +35,17 @@ def search(query: str, conn=Depends(get_connection)):
             detail="Failed to fetch results",
         )
     return results
+
+
+@patient_router.get("/patients/{patient_id}/overview")
+def patient_overview(patient_id: int, conn=Depends(get_connection)):
+    data = get_patient_overview(conn, patient_id)
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found",
+        )
+    return data
 
 
 @patient_router.get("/patients/{patient_id}")
@@ -71,6 +83,9 @@ def create(patient: PatientCreate, conn=Depends(get_connection)):
             email=patient.email,
             additional_info=patient.additional_info,
             emergency_contact=patient.emergency_contact,
+            blood_type=patient.blood_type,
+            allergies=patient.allergies,
+            conditions=patient.conditions,
         )
     except ValueError as e:
         raise HTTPException(
@@ -96,7 +111,12 @@ def update(patient_id: int, patient: PatientUpdate, conn=Depends(get_connection)
             birth_date=patient.birth_date if patient.birth_date is not None else UNSET,
             phone=patient.phone if patient.phone is not None else UNSET,
             email=patient.email if patient.email is not None else UNSET,
+            gender=patient.gender if patient.gender is not None else UNSET,
             additional_info=patient.additional_info if patient.additional_info is not None else UNSET,
+            emergency_contact=patient.emergency_contact if patient.emergency_contact is not None else UNSET,
+            blood_type=patient.blood_type if patient.blood_type is not None else UNSET,
+            allergies=patient.allergies if patient.allergies is not None else UNSET,
+            conditions=patient.conditions if patient.conditions is not None else UNSET,
         )
     except ValueError as e:
         raise HTTPException(

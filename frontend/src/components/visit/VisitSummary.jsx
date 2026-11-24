@@ -1,7 +1,7 @@
 import { CheckCircle2, Printer } from 'lucide-react'
 import { BillingBadge, Card, StatusBadge } from '../common'
 import { CLINIC } from '../../utils/constants'
-import { formatDate, formatTime } from '../../utils/format'
+import { formatDate, formatTime, patientRef, visitRef } from '../../utils/format'
 import s from './visit.module.css'
 
 export function VisitSummary({ visit, actions, footer, title = 'Visit summary', checkedInNote }) {
@@ -11,12 +11,12 @@ export function VisitSummary({ visit, actions, footer, title = 'Visit summary', 
         <div>
           <p className={s.summaryLabel}>Patient</p>
           <div className={s.summaryValue}>
-            {visit.patientName} · {visit.patientId}
+            {visit.patientName} · {patientRef(visit.patientId)}
           </div>
         </div>
         <div>
           <p className={s.summaryLabel}>Visit ID</p>
-          <div className={s.summaryValue}>{visit.id}</div>
+          <div className={s.summaryValue}>{visitRef(visit.id)}</div>
         </div>
         <div>
           <p className={s.summaryLabel}>Visit type</p>
@@ -105,7 +105,7 @@ export function TicketPreview({ visit, patient, showPrinter = true, className = 
 
       <div className={s.ticketRows}>
         <TicketRow label="Patient" value={visit.patientName} />
-        <TicketRow label="Patient ID" value={visit.patientId} />
+        <TicketRow label="Patient ID" value={patientRef(visit.patientId)} />
         <TicketRow label="Attending" value={`${visit.doctorName} · ${visit.specialty}`} />
         <TicketRow label="Location" value={`${visit.room} · Downtown Center`} />
         <TicketRow label="Date" value={`${formatDate(visit.date)} · ${visit.timeLabel}`} />
@@ -113,7 +113,7 @@ export function TicketPreview({ visit, patient, showPrinter = true, className = 
       </div>
 
       <div className={s.barcode} />
-      <p className={s.barcodeText}>*{visit.id.replace(/-/g, '')}*</p>
+      <p className={s.barcodeText}>*{String(visit.id).replace(/-/g, '')}*</p>
 
       <p className={s.ticketInstructions}>
         Please monitor the center screen for your number announcement.

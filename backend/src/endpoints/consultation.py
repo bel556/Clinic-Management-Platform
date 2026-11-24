@@ -27,8 +27,15 @@ def create_note_for_visit(
     conn=Depends(get_connection),
 ):
     try:
-        new_note = consultation_service.add_medical_note(conn, visit_id, payload.content)
+        new_note = consultation_service.add_medical_note(
+            conn, visit_id, payload.content, is_draft=payload.is_draft
+        )
         return new_note
+    except LookupError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -48,7 +55,10 @@ def update_note(
     conn=Depends(get_connection),
 ):
     try:
-        updated = consultation_service.update_medical_note(conn, note_id, payload.content)
+        updated = consultation_service.update_medical_note(
+            conn, note_id, payload.content,
+            is_draft=payload.is_draft if payload.is_draft is not None else consultation_service.UNSET,
+        )
         if updated is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

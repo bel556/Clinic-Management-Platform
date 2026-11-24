@@ -26,18 +26,31 @@ def search_doctors(conn, name=None, specialty=None, only_present=False):
 
     return repo.get_all_doctors(conn) or []
 
-def get_doctor_queue(conn, doctor_id):
+def get_doctor_queue(conn, doctor_id, include_consultation=False):
     doctor = repo.get_doctor_by_id(conn, doctor_id)
     if doctor is None:
         return None
 
-    queue = repo.get_doctor_queue(conn, doctor_id) or []
-    return {
+    rows = repo.get_doctor_queue(conn, doctor_id) or []
+    counts = rows[0] if rows else {}
+    queue = [row for row in rows if row.get('visit_id') is not None]
+    payload = {
         'doctor_id': doctor_id,
         'doctor': doctor,
         'total_waiting': len(queue),
+        'total_today': int(counts.get('total_today') or 0),
+        'completed_today': int(counts.get('completed_today') or 0),
         'queue': queue,
     }
+
+    if include_consultation and queue:
+        # Imported lazily to avoid a module cycle at import time.
+        from src.services import visit_service
+        payload['initial_consultation'] = visit_service.get_consultation(
+            conn, queue[0]['visit_id']
+        )
+
+    return payload
 
 def get_doctor_visits(conn, doctor_id, visit_day=None):
     doctor = repo.get_doctor_by_id(conn, doctor_id)
@@ -56,6 +69,16 @@ def get_doctor_availability(conn, doctor_id):
     if doctor is None:
         return None
     return repo.get_doctor_availability(conn, doctor_id)
+
+
+def get_doctor_week(conn, doctor_id, start_day, end_day):
+    doctor = repo.get_doctor_by_id(conn, doctor_id)
+    if doctor is None:
+        return None
+    return {
+        'doctor': doctor,
+        'visits': repo.get_doctor_week_visits(conn, doctor_id, start_day, end_day) or [],
+    }
 
 
 def set_doctor_availability(conn, doctor_id, status):

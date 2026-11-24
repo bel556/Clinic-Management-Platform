@@ -15,7 +15,7 @@ import { PageHeader } from '../../../components/layout'
 import { availableSlots, rescheduleAppointment } from '../../../services/appointments'
 import { getVisit } from '../../../services/visits'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { formatDate } from '../../../utils/format'
+import { formatDate, patientRef, tomorrowKey, visitRef } from '../../../utils/format'
 import s from '../doctorPages.module.css'
 
 export default function RescheduleAppointmentPage() {
@@ -24,13 +24,13 @@ export default function RescheduleAppointmentPage() {
   const toast = useToast()
   const { visitId } = useParams()
   const { data: visit, loading } = useAsync(() => getVisit(visitId), [visitId])
-  const [date, setDate] = useState('2024-10-30')
+  const [date, setDate] = useState(tomorrowKey())
   const [slot, setSlot] = useState('')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
 
   const { data: slots, loading: slotsLoading } = useAsync(
-    () => availableSlots(visit?.doctorId ?? 'D-01', date),
+    () => (visit?.doctorId ? availableSlots(visit.doctorId, date) : Promise.resolve([])),
     [visit?.doctorId, date],
   )
 
@@ -67,8 +67,8 @@ export default function RescheduleAppointmentPage() {
         <div className={s.selectedPatient} style={{ marginBottom: 12 }}>
           <RefreshCw size={12} />
           <span className={s.selectedPatientName}>{visit.patientName}</span>
-          <span className="u-mono u-xs u-muted">{visit.patientId}</span>
-          <span className="u-mono u-xs u-muted">· {visit.id}</span>
+          <span className="u-mono u-xs u-muted">{patientRef(visit.patientId)}</span>
+          <span className="u-mono u-xs u-muted">· {visitRef(visit.id)}</span>
           <span className={s.muted}>
             Current slot: Today, {formatDate(visit.date)} · {visit.timeLabel}
           </span>

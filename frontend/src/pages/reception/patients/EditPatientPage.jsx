@@ -6,6 +6,7 @@ import { PageHeader } from '../../../components/layout'
 import { PatientForm } from '../../../components/patient/PatientForm'
 import { getPatient, updatePatient } from '../../../services/patients'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
+import { patientRef } from '../../../utils/format'
 
 export default function EditPatientPage() {
   useDocumentTitle('Edit patient')
@@ -79,7 +80,7 @@ export default function EditPatientPage() {
           <>
             <strong>{patient.fullName}</strong>
             <br />
-            {patient.id} · updates not saved
+            {patientRef(patient.id)} · updates not saved
           </>
         }
         confirmLabel="Discard changes"

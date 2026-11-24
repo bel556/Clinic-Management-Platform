@@ -4,9 +4,10 @@ from src.services.doctor_service import (
     get_doctor_queue,
     get_doctor_visits,
     get_doctor_availability,
+    get_doctor_week,
     set_doctor_availability,
 )
-from src.schemas import DoctorSearch, DoctorAvailabilityUpdate
+from src.schemas import DoctorAvailabilityUpdate
 from src.database.connection import get_connection
 from fastapi import Depends, APIRouter, status, HTTPException, Query
 from typing import Optional
@@ -43,8 +44,12 @@ def get_doctor(doctor_id: int, conn=Depends(get_connection)):
 
 
 @doctor_router.get("/doctors/{doctor_id}/queue")
-def doctor_queue(doctor_id: int, conn=Depends(get_connection)):
-    queue = get_doctor_queue(conn, doctor_id)
+def doctor_queue(
+    doctor_id: int,
+    include_consultation: bool = Query(False),
+    conn=Depends(get_connection),
+):
+    queue = get_doctor_queue(conn, doctor_id, include_consultation=include_consultation)
     if queue is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -66,6 +71,22 @@ def doctor_visits(
             detail="Doctor not found",
         )
     return visits
+
+
+@doctor_router.get("/doctors/{doctor_id}/availability/week")
+def doctor_week(
+    doctor_id: int,
+    start: date = Query(...),
+    end: date = Query(...),
+    conn=Depends(get_connection),
+):
+    payload = get_doctor_week(conn, doctor_id, start, end)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found",
+        )
+    return payload
 
 
 @doctor_router.get("/doctors/{doctor_id}/availability")

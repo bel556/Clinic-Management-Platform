@@ -1,6 +1,6 @@
 import { Activity, Contact, Stethoscope } from 'lucide-react'
 import { Avatar, Badge, Card, InfoNote, StatusBadge } from '../common'
-import { formatAge, formatDate, formatDateShort } from '../../utils/format'
+import { formatAge, formatDateShort, patientRef } from '../../utils/format'
 import s from './patient.module.css'
 
 export function PatientHeaderCard({ patient, actions }) {
@@ -12,7 +12,7 @@ export function PatientHeaderCard({ patient, actions }) {
           <h2 className={s.headerName}>{patient.fullName}</h2>
           <p className={s.headerMeta}>
             {patient.gender?.toUpperCase()}, {formatAge(patient.birthDate)}
-            <span className="u-muted"> · {patient.id}</span>
+            <span className="u-muted"> · {patientRef(patient.id)}</span>
           </p>
           {actions ? <div className="u-row u-g8" style={{ marginTop: 8 }}>{actions}</div> : null}
         </div>
@@ -24,8 +24,8 @@ export function PatientHeaderCard({ patient, actions }) {
           <p className={s.statValue}>{patient.bloodType ?? '—'}</p>
         </div>
         <div>
-          <p className={s.statLabel}>Primary physician</p>
-          <p className={s.statValue}>{patient.primaryPhysician ?? '—'}</p>
+          <p className={s.statLabel}>Visits on record</p>
+          <p className={s.statValue}>{patient.visits?.length ?? 0}</p>
         </div>
         <div>
           <p className={s.statLabel}>Registered</p>
@@ -60,15 +60,12 @@ export function DemographicsCard({ patient }) {
 }
 
 export function ClinicalBaselineCard({ patient }) {
-  const vitals = patient.vitals ?? {}
   return (
     <Card
-      title="Clinical Baselines"
+      title="Clinical baselines"
       icon={Activity}
       action={
-        vitals.recordedAt ? (
-          <span className="u-xs u-muted">Last recorded {formatDate(vitals.recordedAt)}</span>
-        ) : null
+        <span className="u-xs u-muted">Blood type {patient.bloodType || '—'}</span>
       }
     >
       <div>
@@ -95,27 +92,6 @@ export function ClinicalBaselineCard({ patient }) {
         ) : (
           <p className="u-small u-muted">No chronic conditions recorded.</p>
         )}
-      </div>
-
-      <div className={s.vitalsGrid}>
-        <div className={s.vitalCell}>
-          <p className={s.statLabel}>Resting BP</p>
-          <p className={s.vitalValue}>
-            {vitals.bp ?? '—'}
-            <span className={s.vitalUnit}>mmHg</span>
-          </p>
-        </div>
-        <div className={s.vitalCell}>
-          <p className={s.statLabel}>Heart rate</p>
-          <p className={s.vitalValue}>
-            {vitals.hr ?? '—'}
-            <span className={s.vitalUnit}>bpm</span>
-          </p>
-        </div>
-        <div className={s.vitalCell}>
-          <p className={s.statLabel}>BMI metric</p>
-          <p className={s.vitalValue}>{vitals.bmi ?? '—'}</p>
-        </div>
       </div>
     </Card>
   )
@@ -190,7 +166,7 @@ export function PatientVisitsCard({
 export function PatientSummaryLine({ patient, visit }) {
   return (
     <div className="u-row u-g8 u-wrap">
-      <Badge tone="teal">{patient.id}</Badge>
+      <Badge tone="teal">{patientRef(patient.id)}</Badge>
       <span className="u-small u-muted">{patient.fullName}</span>
       {visit ? (
         <span className="u-xs u-muted">

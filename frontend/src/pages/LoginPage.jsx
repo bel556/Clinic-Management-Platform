@@ -28,7 +28,7 @@ export default function LoginPage() {
 
         <h1 className={s.title}>Sign in to your workspace</h1>
         <p className={s.subtitle}>
-          {CLINIC.name} · {CLINIC.suite}. Choose the role you want to open in this sprint-1 demo.
+          {CLINIC.name} · {CLINIC.suite}. Choose the workspace to open. Sign-in is not enforced yet.
         </p>
 
         <div className={s.roles}>
@@ -49,13 +49,13 @@ export default function LoginPage() {
             </span>
             <span className={s.roleBody}>
               <span className={s.roleTitle}>Doctor</span>
-              <span className={s.roleMeta}>{users.doctor.name} · Cardiology</span>
+              <span className={s.roleMeta}>{users.doctor.name} · {users.doctor.department || 'Doctor'}</span>
             </span>
             <ArrowRight size={15} className={s.roleArrow} />
           </button>
         </div>
 
-        <p className={s.footer}>Demo build · mock data only · FastAPI connection pending</p>
+        <p className={s.footer}>Connected to the FastAPI backend · authentication is not enforced yet</p>
       </div>
     </div>
   )

@@ -1,0 +1,9 @@
+warning: `VIRTUAL_ENV=/home/briber-maissa/Documents/ENSIA journey/third year/data mining/project/venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+INFO:     Started server process [98493]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:37870 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37870 - "GET /v1/models HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:37580 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37580 - "GET /v1/models HTTP/1.1" 404 Not Found

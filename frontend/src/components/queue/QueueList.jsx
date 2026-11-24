@@ -1,18 +1,26 @@
 import { Activity, ArrowRight, ClipboardList } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { BillingBadge, EmptyState } from '../common'
-import { DEMO_NOW } from '../../utils/constants'
+import { now, patientRef } from '../../utils/format'
 import s from './queue.module.css'
 
 function waitMinutes(checkedInAt) {
   if (!checkedInAt) return null
   const minutes = Math.max(
     0,
-    Math.round((DEMO_NOW.getTime() - new Date(checkedInAt).getTime()) / 60000),
+    Math.round((now().getTime() - new Date(checkedInAt).getTime()) / 60000),
   )
   return minutes
 }
 
 export function QueueList({ queue, selectedId, onSelect }) {
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick((value) => value + 1), 30000)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
     <div className={s.queueCard}>
       <div className={s.queueHead}>
@@ -46,7 +54,7 @@ export function QueueList({ queue, selectedId, onSelect }) {
                   ) : null}
                 </div>
                 <div className={s.queueMeta}>
-                  <span>ID: {visit.patientId}</span>
+                  <span>ID: {patientRef(visit.patientId)}</span>
                   <span className={s.queueMetaDivider} />
                   <span>Visit: {visit.type}</span>
                 </div>
@@ -76,34 +84,6 @@ export function QueueList({ queue, selectedId, onSelect }) {
   )
 }
 
-export function VitalsBaselineCard({ vitals }) {
-  if (!vitals) return null
-  return (
-    <div className={s.vitalsCard}>
-      <div className={s.vitalsCardHead}>
-        <span>Today&apos;s vitals baseline</span>
-        <span style={{ color: 'var(--teal)' }}>Auto-synced</span>
-      </div>
-      <div className={s.vitalsRow}>
-        <div className={s.vitalBox}>
-          <p className={s.vitalLabel}>Target BP range</p>
-          <p className={s.vitalValue}>
-            {vitals.bp}
-            <span className={s.vitalUnit}>mmHg</span>
-          </p>
-        </div>
-        <div className={s.vitalBox}>
-          <p className={s.vitalLabel}>Resting HR mean</p>
-          <p className={s.vitalValue}>
-            {vitals.hr}
-            <span className={s.vitalUnit}>BPM</span>
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export function PulseTrace() {
   return (
     <div className={s.trace} aria-hidden="true">
@@ -114,35 +94,6 @@ export function PulseTrace() {
   )
 }
 
-export function VitalsStrip({ vitals, recordedAt }) {
-  return (
-    <div className={s.vitalStrip}>
-      <div className={s.stripCell}>
-        <p className={s.stripLabel}>Last recorded blood pressure</p>
-        <p className={s.stripValue}>
-          {vitals?.bp ?? '—'}
-          <span className={s.stripUnit}>mmHg</span>
-        </p>
-      </div>
-      <div className={s.stripCell}>
-        <p className={s.stripLabel}>Resting pulse</p>
-        <p className={s.stripValue}>
-          {vitals?.hr ?? '—'}
-          <span className={s.stripUnit}>BPM</span>
-        </p>
-      </div>
-      <PulseTrace />
-      {recordedAt ? (
-        <div className={s.stripCell} style={{ maxWidth: 120 }}>
-          <p className={s.stripLabel}>Recorded</p>
-          <p className={s.stripValue} style={{ fontSize: 11, fontWeight: 500 }}>
-            {recordedAt}
-          </p>
-        </div>
-      ) : null}
-    </div>
-  )
-}
 
 export function QueueIcon() {
   return <Activity size={14} />

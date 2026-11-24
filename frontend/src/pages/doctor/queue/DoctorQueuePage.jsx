@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Ban, Building2, CheckCircle2, Clock3, Stethoscope } from 'lucide-react'
 import {
   Badge,
+  ErrorPane,
   ConfirmDialog,
   Field,
   Textarea,
   useToast,
 } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
-import { QueueList, VitalsBaselineCard } from '../../../components/queue/QueueList'
+import { QueueList } from '../../../components/queue/QueueList'
 import { ConsultationPanel } from '../../../components/queue/ConsultationPanel'
 import {
   getConsultation,
@@ -19,30 +20,42 @@ import {
   saveDraft as saveDraftNote,
 } from '../../../services/queue'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { STAFF } from '../../../services/mockDb'
+import { useSession } from '../../../services/session'
+import { patientRef } from '../../../utils/format'
 import s from '../doctorPages.module.css'
 import q from '../../../components/queue/queue.module.css'
 
-const DOCTOR_ID = 'D-01'
 
 export default function DoctorQueuePage() {
   useDocumentTitle("Today's Queue")
   const navigate = useNavigate()
   const toast = useToast()
+  const { doctorId: DOCTOR_ID, users } = useSession()
   const [selectedId, setSelectedId] = useState(null)
   const [doneOpen, setDoneOpen] = useState(false)
   const [missedOpen, setMissedOpen] = useState(false)
   const [missReason, setMissReason] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const { data, loading, reload } = useAsync(() => getDoctorQueue(DOCTOR_ID), [])
-  const activeId = selectedId ?? data?.queue?.[0]?.id ?? null
+  const { data, loading, error, reload } = useAsync(
+    () => (DOCTOR_ID ? getDoctorQueue(DOCTOR_ID) : Promise.resolve(null)),
+    [DOCTOR_ID],
+  )
+  const firstQueueId = data?.queue?.[0]?.id ?? null
+  const activeId = selectedId ?? firstQueueId
   const { data: consultation, reload: reloadConsultation } = useAsync(
-    () => (activeId ? getConsultation(activeId) : Promise.resolve(null)),
-    [activeId],
+    () => {
+      if (!activeId) return Promise.resolve(null)
+      // The first patient's consultation ships with the queue response.
+      if (activeId === firstQueueId && data?.initialConsultation) {
+        return Promise.resolve(data.initialConsultation)
+      }
+      return getConsultation(activeId)
+    },
+    [activeId, firstQueueId, data?.initialConsultation],
   )
 
-  const doctor = STAFF.doctor
+  const doctor = users.doctor
 
   const afterAction = (message) => {
     toast.push(message)
@@ -60,10 +73,12 @@ export default function DoctorQueuePage() {
         description="Live waiting list for your clinic session."
         actions={
           <Badge tone="teal" dot>
-            Session active · 00:41:20
+            Live queue · {data?.stats?.waiting ?? 0} waiting
           </Badge>
         }
       />
+
+      {error ? <ErrorPane error={error} onRetry={reload} /> : null}
 
       <div className={q.doctorBanner}>
         <div className={q.doctorBannerMain}>
@@ -76,14 +91,15 @@ export default function DoctorQueuePage() {
               <span className="u-small u-muted">/ {doctor.department}</span>
             </div>
             <div className={q.doctorRole}>
-              Cardiology · {doctor.accessLevel?.split(' / ')[0]}
+              {doctor.specialty} · {doctor.room || 'No room assigned'} ·{' '}
+              {doctor.present ? 'Present' : 'Absent'}
             </div>
           </div>
         </div>
         <div className={q.doctorMeta}>
           <span className={q.metaItem}>
-            <Building2 size={11} /> Exam Room 48 · Schedule Capacity: {data?.stats?.processed ?? 0} /{' '}
-            {data?.stats?.capacity ?? 12} Patients Processed
+            <Building2 size={11} /> {doctor.room || 'No room assigned'} · Processed:{' '}
+            {data?.stats?.processed ?? 0} / {data?.stats?.capacity ?? 0}
           </span>
           <span className={q.metaItem}>
             <Clock3 size={11} /> {data?.stats?.waiting ?? 0} waiting
@@ -98,7 +114,6 @@ export default function DoctorQueuePage() {
             selectedId={selectedId}
             onSelect={setSelectedId}
           />
-          <VitalsBaselineCard vitals={consultation?.patient?.vitals ?? {}} />
         </div>
 
         <ConsultationPanel
@@ -131,7 +146,7 @@ export default function DoctorQueuePage() {
             <>
               <strong>
                 {consultation.visit.queueLabel} · {consultation.visit.patientName} ·{' '}
-                {consultation.visit.patientId}
+                {patientRef(consultation.visit.patientId)}
               </strong>
               <br />
               Consultation · Today
@@ -172,7 +187,7 @@ export default function DoctorQueuePage() {
             <>
               <strong>
                 {consultation.visit.queueLabel} · {consultation.visit.patientName} ·{' '}
-                {consultation.visit.patientId}
+                {patientRef(consultation.visit.patientId)}
               </strong>
               <br />
               {consultation.visit.type} · Today

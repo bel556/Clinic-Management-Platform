@@ -1,15 +1,21 @@
 import { Link } from 'react-router-dom'
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Bell, Building2, Clock3, LogOut } from 'lucide-react'
 import { Avatar } from '../common'
 import { unreadCount } from '../../services/notifications'
 import { subscribe } from '../../services/store'
-import { CLINIC, DEMO_NOW } from '../../utils/constants'
-import { formatStamp } from '../../utils/format'
+import { CLINIC } from '../../utils/constants'
+import { formatStamp, now } from '../../utils/format'
 import s from './layout.module.css'
 
 export function Topbar({ user, bellTo, onLogOut, showBell = true, actions }) {
   const unread = useSyncExternalStore(subscribe, unreadCount)
+  const [clock, setClock] = useState(() => now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setClock(now()), 30000)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
     <header className={s.topbar} data-print="hide">
@@ -26,7 +32,7 @@ export function Topbar({ user, bellTo, onLogOut, showBell = true, actions }) {
         <span className={s.dot} />
         <span className={s.stamp}>
           <Clock3 size={11} />
-          {formatStamp(DEMO_NOW)}
+          {formatStamp(clock)}
         </span>
       </div>
 

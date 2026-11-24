@@ -1,4 +1,5 @@
-import { Info, Inbox } from 'lucide-react'
+import { Info, Inbox, RotateCcw } from 'lucide-react'
+import { Button } from './Button'
 import { cx } from './cx'
 import s from './ui.module.css'
 
@@ -40,6 +41,29 @@ export function SectionHeader({ eyebrow, title, description, actions, className 
         {description ? <p className={s.sectionDesc}>{description}</p> : null}
       </div>
       {actions ? <div className="u-row u-g8 u-wrap">{actions}</div> : null}
+    </div>
+  )
+}
+
+export function ErrorPane({ error, onRetry }) {
+  const message =
+    (typeof error === 'string' && error) ||
+    error?.message ||
+    'The clinic API did not respond.'
+  return (
+    <div className={cx(s.empty, s.noteDanger)}>
+      <span className={s.emptyIcon}>
+        <Info size={18} strokeWidth={1.9} />
+      </span>
+      <p className={s.emptyTitle}>Couldn&apos;t load this screen</p>
+      <p className={s.emptyText}>{message}</p>
+      {onRetry ? (
+        <div className={s.emptyActions}>
+          <Button variant="secondary" size="sm" icon={RotateCcw} onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -1,3 +1,12 @@
+/**
+ * Data source selector.
+ *  - 'api'  (default) → services talk to the FastAPI backend.
+ *  - 'mock'           → services run on the in-memory demo database (mockDb.js).
+ * Override with VITE_DATA_SOURCE in a .env file.
+ */
+export const DATA_SOURCE = import.meta.env?.VITE_DATA_SOURCE ?? 'api'
+export const DEMO_MODE = DATA_SOURCE === 'mock'
+
 /** Demo clock: the sprint-1 mockups are all captured on Tue 29 Oct 2024, 09:42. */
 export const DEMO_NOW = new Date('2024-10-29T09:42:00')
 export const TODAY = '2024-10-29'

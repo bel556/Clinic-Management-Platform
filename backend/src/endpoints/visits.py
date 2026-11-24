@@ -2,6 +2,8 @@ from src.services.visit_service import (
     create_visit_if_not_exists,
     modify_visit_info,
     cancel_visit,
+    get_visit,
+    get_consultation,
     get_visit_queue_number,
     search_visits_by_patient,
     search_visits_by_status,
@@ -35,35 +37,28 @@ def visits_by_status(
     visit_day: Optional[date] = Query(None),
     conn=Depends(get_connection),
 ):
-    visits = search_visits_by_status(conn, visit_status, visit_day=visit_day)
-    if visits is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No visits found with this status",
-        )
-    return visits
+    return search_visits_by_status(conn, visit_status, visit_day=visit_day)
 
 
 @visit_router.get("/visits/by-date/{visit_day}")
 def visits_by_date(visit_day: date, conn=Depends(get_connection)):
-    visits = search_visits_by_date(conn, visit_day)
-    if visits is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No visits found on this date",
-        )
-    return visits
+    return search_visits_by_date(conn, visit_day)
 
 
 @visit_router.get("/visits/by-type/{visit_type}")
 def visits_by_type(visit_type: str, conn=Depends(get_connection)):
-    visits = search_visits_by_type(conn, visit_type)
-    if visits is None:
+    return search_visits_by_type(conn, visit_type)
+
+
+@visit_router.get("/visits/{visit_id}")
+def get_single_visit(visit_id: int, conn=Depends(get_connection)):
+    visit = get_visit(conn, visit_id)
+    if visit is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No visits found with this type",
+            detail="Visit not found",
         )
-    return visits
+    return visit
 
 
 @visit_router.get("/visits/{visit_id}/queue")
@@ -75,6 +70,17 @@ def visit_queue_number(visit_id: int, conn=Depends(get_connection)):
             detail="Visit not found in queue",
         )
     return queue_info
+
+
+@visit_router.get("/visits/{visit_id}/consultation")
+def visit_consultation(visit_id: int, conn=Depends(get_connection)):
+    data = get_consultation(conn, visit_id)
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Visit not found",
+        )
+    return data
 
 
 @visit_router.get("/visits/{visit_id}/details")
@@ -97,6 +103,9 @@ def create(visit: VisitCreate, conn=Depends(get_connection)):
         visit.visit_date,
         visit.visit_type,
         status=visit.status,
+        financial_status=visit.financial_status,
+        reason=visit.reason,
+        slot=visit.slot,
     )
     if new_visit is None:
         raise HTTPException(
@@ -115,6 +124,9 @@ def modify(visit_id: int, visit: VisitModify, conn=Depends(get_connection)):
         doctor_id=visit.doctor_id,
         visit_type=visit.visit_type,
         status=visit.status,
+        financial_status=visit.financial_status,
+        reason=visit.reason,
+        slot=visit.slot,
     )
     if updated is None:
         raise HTTPException(

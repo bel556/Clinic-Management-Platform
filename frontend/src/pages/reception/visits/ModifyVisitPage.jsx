@@ -1,23 +1,23 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { FileWarning } from 'lucide-react'
-import { Card, ConfirmDialog, LoadingPane } from '../../../components/common'
+import { Card, ConfirmDialog, ErrorPane, LoadingPane } from '../../../components/common'
 import { PageHeader } from '../../../components/layout'
 import { VisitForm } from '../../../components/visit/VisitForm'
 import { listDoctors } from '../../../services/doctors'
 import { getVisit, updateVisit } from '../../../services/visits'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { formatDate } from '../../../utils/format'
+import { formatDate, patientRef, visitRef } from '../../../utils/format'
 
 export default function ModifyVisitPage() {
   const navigate = useNavigate()
   const { visitId } = useParams()
-  const { data: visit, loading } = useAsync(() => getVisit(visitId), [visitId])
+  const { data: visit, loading, error, reload } = useAsync(() => getVisit(visitId), [visitId])
   const { data: doctors } = useAsync(() => listDoctors(), [])
   const [dirty, setDirty] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  useDocumentTitle(visit ? `Modify ${visit.id}` : 'Modify visit')
+  useDocumentTitle(visit ? `Modify ${visitRef(visit.id)}` : 'Modify visit')
 
   const requestCancel = () => {
     if (dirty) setDiscardOpen(true)
@@ -35,6 +35,7 @@ export default function ModifyVisitPage() {
   }
 
   if (loading) return <LoadingPane label="Loading visit…" />
+  if (error) return <ErrorPane error={error} onRetry={reload} />
   if (!visit) return <p className="u-muted">Visit not found.</p>
 
   return (
@@ -43,7 +44,7 @@ export default function ModifyVisitPage() {
         title="Modify visit"
         breadcrumb={[
           { label: 'Visits', to: '/reception/visits' },
-          { label: visit.id, to: `/reception/visits/${visit.id}` },
+          { label: visitRef(visit.id), to: `/reception/visits/${visit.id}` },
           { label: 'Modify visit' },
         ]}
         backTo={`/reception/visits/${visit.id}`}
@@ -55,8 +56,8 @@ export default function ModifyVisitPage() {
           <span className="u-strong" style={{ color: 'var(--text-2)' }}>
             {visit.patientName}
           </span>
-          <span>· {visit.patientId}</span>
-          <span>· Visit {visit.id}</span>
+          <span>· {patientRef(visit.patientId)}</span>
+          <span>· Visit {visitRef(visit.id)}</span>
           <span>· Current: {formatDate(visit.date)} · {visit.timeLabel}</span>
         </div>
         <VisitForm
@@ -87,7 +88,7 @@ export default function ModifyVisitPage() {
         summary={
           <>
             <strong>
-              {visit.id} · {visit.patientName}
+              {visitRef(visit.id)} · {visit.patientName}
             </strong>
             <br />
             {visit.type} · {visit.timeLabel}

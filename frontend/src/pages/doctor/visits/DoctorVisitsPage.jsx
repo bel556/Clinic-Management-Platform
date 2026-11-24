@@ -19,6 +19,7 @@ import {
   Card,
   ConfirmDialog,
   EmptyState,
+  ErrorPane,
   Field,
   IconButton,
   InfoNote,
@@ -32,11 +33,9 @@ import {
 import { PageHeader } from '../../../components/layout'
 import { cancelAppointment, cancelDay, listDoctorCalendar } from '../../../services/appointments'
 import { useAsync, useDocumentTitle } from '../../../utils/hooks'
-import { DEMO_NOW, TOMORROW } from '../../../utils/constants'
-import { dateKey, formatDate, formatDayLong, formatTime } from '../../../utils/format'
+import { dateKey, formatDate, formatDayLong, formatTime, now, patientRef, tomorrowKey, visitRef } from '../../../utils/format'
+import { useSession } from '../../../services/session'
 import s from '../doctorPages.module.css'
-
-const DOCTOR_ID = 'D-01'
 
 export default function DoctorVisitsPage() {
   useDocumentTitle('My Visits & Calendar')
@@ -51,7 +50,12 @@ export default function DoctorVisitsPage() {
   const [dayReason, setDayReason] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const { data, loading, reload } = useAsync(() => listDoctorCalendar(DOCTOR_ID), [])
+  const { doctorId: DOCTOR_ID } = useSession()
+  const TOMORROW = tomorrowKey()
+  const { data, loading, error, reload } = useAsync(
+    () => (DOCTOR_ID ? listDoctorCalendar(DOCTOR_ID) : Promise.resolve(null)),
+    [DOCTOR_ID],
+  )
 
   const upcoming = useMemo(() => data?.upcoming ?? [], [data])
   const tomorrowRows = upcoming.filter((visit) => dateKey(visit.date) === TOMORROW)
@@ -63,24 +67,25 @@ export default function DoctorVisitsPage() {
         if (!needle) return true
         return (
           visit.patientName.toLowerCase().includes(needle) ||
-          visit.patientId.toLowerCase().includes(needle) ||
-          visit.id.toLowerCase().includes(needle)
+          patientRef(visit.patientId).toLowerCase().includes(needle) ||
+          String(visit.patientId).includes(needle) ||
+          visitRef(visit.id).toLowerCase().includes(needle)
         )
       })
       .filter((visit) => {
-        if (dateFilter === 'today') return dateKey(visit.date) === dateKey(DEMO_NOW)
+        if (dateFilter === 'today') return dateKey(visit.date) === dateKey(now())
         if (dateFilter === 'tomorrow') return dateKey(visit.date) === TOMORROW
         return true
       })
       .filter((visit) => (typeFilter === 'all' ? true : visit.type === typeFilter))
-  }, [upcoming, search, dateFilter, typeFilter])
+  }, [upcoming, search, dateFilter, typeFilter, TOMORROW])
 
   const confirmCancel = async () => {
     if (!cancelTarget || !cancelReason.trim()) return
     setBusy(true)
     try {
       await cancelAppointment(cancelTarget.id, { reason: cancelReason })
-      toast.push(`Appointment ${cancelTarget.id} cancelled. Reception notified.`)
+      toast.push(`Appointment ${visitRef(cancelTarget.id)} cancelled. Reception notified.`)
       setCancelTarget(null)
       setCancelReason('')
       reload()
@@ -153,19 +158,24 @@ export default function DoctorVisitsPage() {
           icon={CalendarClock}
           label="Tomorrow projected"
           value={data?.stats.tomorrowProjected ?? 0}
-          sub={<>First check-in: <strong>{data?.stats.firstCheckIn ?? '08:00 AM'}</strong></>}
+          sub={<>Appointments booked for tomorrow</>}
         />
         <Kpi
           icon={RefreshCw}
-          label="Clinic reception handshake"
-          value={data?.stats.handshake ?? '100%'}
-          sub={<>Synchronized · Front desk actions auto-routed</>}
+          label="Completed today"
+          value={data?.stats.completedToday ?? 0}
+          sub={
+            <>
+              {data?.stats.missedToday ?? 0} missed · first check-in{' '}
+              {data?.stats.firstCheckIn ?? '—'}
+            </>
+          }
         />
         <Kpi
           icon={History}
           label="Historical total"
-          value={data?.stats.historicalTotal ?? 142}
-          sub={<>Logged visits · 3-day physician summary</>}
+          value={data?.stats.historicalTotal ?? 0}
+          sub={<>Logged visits for this doctor</>}
         />
       </div>
 
@@ -173,7 +183,7 @@ export default function DoctorVisitsPage() {
         <Tabs
           tabs={[
             { id: 'upcoming', label: 'Upcoming', count: upcoming.length },
-            { id: 'history', label: 'History', count: data?.stats.historicalTotal ?? 142 },
+            { id: 'history', label: 'History', count: data?.stats.historicalTotal ?? 0 },
           ]}
           value="upcoming"
           onChange={(value) => {
@@ -215,6 +225,8 @@ export default function DoctorVisitsPage() {
 
       {loading ? (
         <LoadingPane label="Loading your calendar…" />
+      ) : error ? (
+        <ErrorPane error={error} onRetry={reload} />
       ) : (
         <Card padded={false}>
           <div className="u-scroll">
@@ -239,7 +251,7 @@ export default function DoctorVisitsPage() {
                     <td>
                       <div className={s.visitTime}>
                         <span className={s.visitTimeLabel}>
-                          {dateKey(visit.date) === dateKey(DEMO_NOW) ? 'Today' : visit.dayLabel},{' '}
+                          {dateKey(visit.date) === dateKey(now()) ? 'Today' : visit.dayLabel},{' '}
                           {formatTime(visit.date)}
                         </span>
                         <span className={s.visitTimeSub}>
@@ -250,7 +262,7 @@ export default function DoctorVisitsPage() {
                     <td>
                       <div className={s.patientCell}>
                         <span className={s.patientName}>{visit.patientName}</span>
-                        <span className={s.patientId}>{visit.patientId}</span>
+                        <span className={s.patientId}>{patientRef(visit.patientId)}</span>
                       </div>
                     </td>
                     <td>{visit.type}</td>
@@ -350,7 +362,7 @@ export default function DoctorVisitsPage() {
           cancelTarget ? (
             <>
               <strong>
-                {cancelTarget.patientName} · {cancelTarget.patientId}
+                {cancelTarget.patientName} · {patientRef(cancelTarget.patientId)}
               </strong>
               <br />
               {cancelTarget.type} · Today, {cancelTarget.timeLabel}
