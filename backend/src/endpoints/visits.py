@@ -1,6 +1,7 @@
 from src.services.visit_service import (
     create_visit_if_not_exists,
     modify_visit_info,
+    change_visit_status,
     cancel_visit,
     get_visit,
     get_consultation,

@@ -1,6 +1,6 @@
 # Clinic-Management-Platform
 
-Full-stack clinic management platform: **FastAPI + MySQL** backend, **React 19 + Vite** frontend.
+Full-stack clinic management platform: **FastAPI + MySQL** backend, **React 19 + Vite + electron ** frontend.
 
 ```
 backend/    FastAPI service (patients, doctors, visits, queue, consultations, notifications)
@@ -41,7 +41,6 @@ only for demo/local use — never run it against a shared hosted database.
 ```bash
 cd backend
 uv sync
-cp .env.example .env      # set db_user / db_password / db_database
 uv run uvicorn src.main:app --reload
 ```
 

@@ -1,11 +1,4 @@
-"""Patient persistence helpers.
 
-Every write uses a single statement so a failed update cannot leave the record
-half-modified (the previous implementation committed column by column).
-"""
-
-# Phone numbers are stored with whatever punctuation the desk typed; comparisons
-# strip the separators so "+1 (555) 438-9920" and "15554389920" both match.
 PHONE_DIGITS = (
     "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),"
     "'(',''),')',''),'.',''),'+','')"

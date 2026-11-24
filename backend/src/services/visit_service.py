@@ -7,7 +7,6 @@ from src.repository import patients
 import src.services.notification_service as notif_service
 
 
-# ---------- Helpers ----------
 
 def _remove_from_queue(conn, visit_id, must_exist=True):
     """Remove a visit from the QUEUE table; the repository renumbers the day."""
@@ -22,7 +21,6 @@ def _remove_from_queue(conn, visit_id, must_exist=True):
     return True
 
 
-# ---------- Create ----------
 
 def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
                                visit_type, status='scheduled',
@@ -49,7 +47,6 @@ def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
     return visits.get_visit_details(conn, visit_id)
 
 
-# ---------- Modify ----------
 
 def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                       visit_type=None, status=None, financial_status=None,
@@ -94,6 +91,12 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                     visits.modify_visit_completed_at(conn, visit_id, None)
                 elif status in ('completed', 'done'):
                     visits.modify_visit_completed_at(conn, visit_id, datetime.now())
+                    curr_fin_status = financial_status if financial_status is not None else existing.get('financial_status')
+                    if curr_fin_status and str(curr_fin_status).lower() == 'unpaid':
+                        try:
+                            notif_service.create_notification(conn, visit_id, 'unpaid')
+                        except Exception:
+                            pass
 
                 if status == 'cancelled':
                     _remove_from_queue(conn, visit_id, must_exist=False)
@@ -150,7 +153,12 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
         return None
 
 
-# ---------- Cancel ----------
+# ---------- Cancel & Status ----------
+
+def change_visit_status(conn, visit_id, status, **kwargs):
+    """Change the status of a visit and trigger associated business logic."""
+    return modify_visit_info(conn, visit_id, status=status, **kwargs)
+
 
 def cancel_visit(conn, visit_id):
     return modify_visit_info(conn, visit_id, status='cancelled')
@@ -244,7 +252,6 @@ def get_consultation(conn, visit_id):
     }
 
 
-# ---------- Doctor view ----------
 
 def get_visit_details_for_doctor(conn, visit_id, doctor_id):
     visit = visits.get_visit_by_id(conn, visit_id)

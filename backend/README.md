@@ -15,41 +15,14 @@ mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS clinic"
 mysql -u root -p clinic < schema.sql
 mysql -u root -p clinic < seed.sql
 
-# 3. Configure credentials
-cp .env.example .env   # then edit db_user / db_password / db_database
+
 
 # 4. Run
 uv run uvicorn src.main:app --reload
-```
 
-- API: <http://localhost:8000>
-- Swagger UI: <http://localhost:8000/docs>
-- Health check: <http://localhost:8000/health>
 
-The seed file uses dates relative to `CURDATE()`, so the reception board and the
-doctor queue are populated on whatever day you import it.
 
-## Schema upgrades
 
-`schema.sql` creates every current column. If you already had an older database,
-apply these once:
-
-```sql
-ALTER TABLE VISIT
-  ADD COLUMN checked_in_at DATETIME NULL AFTER slot,
-  ADD COLUMN completed_at DATETIME NULL AFTER checked_in_at;
-ALTER TABLE PATIENT
-  ADD COLUMN blood_type VARCHAR(5) NULL AFTER gender,
-  ADD COLUMN allergies TEXT NULL AFTER additional_info,
-  ADD COLUMN conditions TEXT NULL AFTER allergies;
-ALTER TABLE DOCTOR
-  ADD COLUMN slot_length_minutes INT NOT NULL DEFAULT 20 AFTER specialty,
-  ADD COLUMN npi VARCHAR(20) NULL AFTER slot_length_minutes,
-  ADD COLUMN license_no VARCHAR(50) NULL AFTER npi;
-UPDATE VISIT SET checked_in_at = DATE_SUB(visit_date, INTERVAL 5 MINUTE)
-  WHERE status IN ('checked_in', 'present');
-UPDATE VISIT SET completed_at = DATE_ADD(visit_date, INTERVAL 25 MINUTE)
-  WHERE status IN ('completed', 'done');
 ```
 
 ## Layout

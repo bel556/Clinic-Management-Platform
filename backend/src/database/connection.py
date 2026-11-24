@@ -26,12 +26,8 @@ connection_pool = pooling.MySQLConnectionPool(
     host=db_host,
     port=int(db_port),
     database=db_database,
-    # MySQL defaults to autocommit=False: a read would leave a REPEATABLE READ
-    # snapshot open on the pooled connection, so later requests miss rows
-    # committed by other connections. Autocommit keeps every query fresh.
+
     autocommit=True,
-    # get_connection() already pings; resetting the session on every return
-    # costs another full round-trip (~250 ms on a remote cluster).
     pool_reset_session=False,
     **_pool_options,
 )
@@ -41,8 +37,6 @@ def get_connection():
     connection = None
 
     try:
-        # Hosted/serverless databases add latency; a burst of page requests can
-        # temporarily exhaust the pool. Wait briefly instead of failing.
         for attempt in range(10):
             try:
                 connection = connection_pool.get_connection()

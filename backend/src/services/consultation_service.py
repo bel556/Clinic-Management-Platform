@@ -1,4 +1,4 @@
-"""Medical notes, including consultation drafts (MEDICALNOTE.is_draft)."""
+
 
 from src.repository import medicalnotes as repo
 from src.repository import visits as visits_repo

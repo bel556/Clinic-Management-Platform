@@ -1,8 +1,4 @@
-"""Visit and queue persistence.
 
-Queue positions are scoped to (doctor, day) so each morning starts at Q-01, and
-removing an entry renumbers the remaining positions of that day.
-"""
 
 
 def create_visit(conn, patient_id, doctor_id, visit_date, visit_type,
@@ -160,7 +156,6 @@ def get_visits_by_type(conn, visit_type):
         return cur.fetchall()
 
 
-# ---- single-field writers -------------------------------------------------
 
 def _update_field(conn, column, visit_id, value):
     try:
@@ -215,7 +210,7 @@ def modify_visit_completed_at(conn, visit_id, value):
     return _update_field(conn, 'completed_at', visit_id, value)
 
 
-# ---- queue ----------------------------------------------------------------
+
 
 def _queue_day_for_visit(conn, visit_id):
     with conn.cursor(dictionary=True) as cur:

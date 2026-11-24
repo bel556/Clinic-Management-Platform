@@ -116,6 +116,21 @@ export async function markVisitDone(visitId, content = '') {
   visit.completedAt = new Date().toISOString()
   visit.queue = null
 
+  if (String(visit.billing ?? '').toLowerCase() === 'unpaid') {
+    db().notifications.unshift({
+      id: `NT-${String(db().notifications.length + 1).padStart(2, '0')}`,
+      visitId: visit.id,
+      patientId: visit.patientId,
+      patientName: visit.patientName,
+      title: 'unpaid',
+      message: 'unpaid',
+      body: `${visit.patientName} · Visit ${visit.id}`,
+      kind: 'action',
+      time: new Date().toISOString(),
+      read: false,
+    })
+  }
+
   return delay(decorateVisit(visit))
 }
 

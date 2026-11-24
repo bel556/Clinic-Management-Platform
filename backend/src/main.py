@@ -14,7 +14,6 @@ app = FastAPI(title="Clinic Management API")
 def health():
     return {"status": "ok"}
 
-# The Vite dev server and the static build both call the API from the browser.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

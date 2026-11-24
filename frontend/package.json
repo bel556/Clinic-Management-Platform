@@ -2,12 +2,31 @@
   "name": "frontend",
   "private": true,
   "version": "0.0.0",
+  "description": "My desktop app",
+  "author": "Your Name",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "npm run build && electron-builder"
+  },
+  "build": {
+    "appId": "com.yourname.yourapp",
+    "productName": "YourApp",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
   "dependencies": {
     "lucide-react": "^1.78.0",
@@ -20,10 +39,15 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.7",
+    "cross-env": "^10.1.0",
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
     "eslint": "^10.14.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.13.0",
-    "vite": "^8.3.6"
+    "vite": "^8.3.6",
+    "wait-on": "^9.5.1"
   }
 }

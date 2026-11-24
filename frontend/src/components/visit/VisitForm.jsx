@@ -6,6 +6,12 @@ import { SPECIALTIES, TIME_SLOTS } from '../../utils/constants'
 import { formatDayLong, patientRef, todayKey } from '../../utils/format'
 import s from './visit.module.css'
 
+function isGeneralist(spec) {
+  if (!spec) return false
+  const s = String(spec).trim().toLowerCase()
+  return s === 'generalist' || s.includes('general')
+}
+
 export function VisitForm({
   patient,
   doctors,
@@ -27,22 +33,50 @@ export function VisitForm({
   const [slots, setSlots] = useState(TIME_SLOTS)
   const [errors, setErrors] = useState({})
 
+  const isRegular = String(type ?? '').toLowerCase() === 'regular'
+
   const specialtyOptions = useMemo(
     () => [...new Set(doctors.map((doctor) => doctor.specialty).filter(Boolean))],
     [doctors],
   )
-  const effectiveSpecialty = specialty || specialtyOptions[0] || ''
 
-  const specialtyDoctors = useMemo(
-    () => doctors.filter((doctor) => doctor.specialty === effectiveSpecialty),
-    [doctors, effectiveSpecialty],
-  )
+  const generalistSpecialty = useMemo(() => {
+    return (
+      specialtyOptions.find((s) => s.toLowerCase() === 'generalist') ||
+      specialtyOptions.find(isGeneralist) ||
+      SPECIALTIES.find(isGeneralist) ||
+      'Generalist'
+    )
+  }, [specialtyOptions])
+
+  const effectiveSpecialty = isRegular
+    ? generalistSpecialty
+    : specialty || 'ALL'
+
+  const specialtyDoctors = useMemo(() => {
+    if (isRegular) {
+      return doctors.filter((doctor) => isGeneralist(doctor.specialty))
+    }
+    if (!effectiveSpecialty || effectiveSpecialty === 'ALL') {
+      return doctors
+    }
+    if (isGeneralist(effectiveSpecialty)) {
+      return doctors.filter((doctor) => isGeneralist(doctor.specialty))
+    }
+    return doctors.filter((doctor) => doctor.specialty === effectiveSpecialty)
+  }, [doctors, isRegular, effectiveSpecialty])
+
   const bookingDoctors = useMemo(
     () => specialtyDoctors.filter((doctor) => doctor.present || doctor.id === doctorId),
     [specialtyDoctors, doctorId],
   )
 
-  const effectiveDoctorId = doctorId || bookingDoctors[0]?.id || ''
+  const effectiveDoctorId = useMemo(() => {
+    if (doctorId && bookingDoctors.some((d) => String(d.id) === String(doctorId))) {
+      return doctorId
+    }
+    return bookingDoctors[0]?.id || ''
+  }, [doctorId, bookingDoctors])
 
   useEffect(() => {
     let alive = true
@@ -65,6 +99,26 @@ export function VisitForm({
     onDirty?.()
   }
 
+  const handleTypeChange = (nextType) => {
+    setType(nextType)
+    onDirty?.()
+    const nextIsRegular = String(nextType).toLowerCase() === 'regular'
+    if (nextIsRegular) {
+      setSpecialty(generalistSpecialty)
+      setSlot('')
+      const cur = doctors.find((d) => String(d.id) === String(doctorId))
+      if (!cur || !isGeneralist(cur.specialty)) {
+        setDoctorId('')
+      }
+    } else {
+      if (isRegular) {
+        setSpecialty('ALL')
+        setDoctorId('')
+        setSlot('')
+      }
+    }
+  }
+
   const handleSpecialty = (value) => {
     setSpecialty(value)
     setDoctorId('')
@@ -72,10 +126,19 @@ export function VisitForm({
     onDirty?.()
   }
 
+  const selectedDoctor = useMemo(
+    () => doctors.find((d) => String(d.id) === String(effectiveDoctorId)),
+    [doctors, effectiveDoctorId],
+  )
+
   const buildPayload = () => ({
     patientId: patient?.id,
     doctorId: effectiveDoctorId,
-    specialty: effectiveSpecialty,
+    specialty: isRegular
+      ? (selectedDoctor?.specialty || generalistSpecialty)
+      : effectiveSpecialty === 'ALL'
+      ? (selectedDoctor?.specialty || '')
+      : effectiveSpecialty,
     date,
     slot,
     time: slot ? slotStart24(slot) : '',
@@ -116,7 +179,7 @@ export function VisitForm({
                 key={option}
                 type="button"
                 className={`${s.typePill} ${type === option ? s.typePillActive : ''}`}
-                onClick={() => update(setType)(option)}
+                onClick={() => handleTypeChange(option)}
               >
                 {option}
               </button>
@@ -137,14 +200,24 @@ export function VisitForm({
         <Field label="Specialty" required htmlFor="visit-specialty">
           <Select
             id="visit-specialty"
-            value={effectiveSpecialty}
+            value={isRegular ? generalistSpecialty : effectiveSpecialty}
             onChange={(event) => handleSpecialty(event.target.value)}
+            disabled={isRegular}
           >
-            {(specialtyOptions.length ? specialtyOptions : SPECIALTIES).map((option) => (
-              <option key={option} value={option}>
-                {option}
+            {isRegular ? (
+              <option value={generalistSpecialty}>
+                {generalistSpecialty.toLowerCase() === 'general practice' ? 'Generalist' : generalistSpecialty}
               </option>
-            ))}
+            ) : (
+              <>
+                <option value="ALL">All specialties</option>
+                {[...new Set([...(specialtyOptions.length ? specialtyOptions : SPECIALTIES)])].map((option) => (
+                  <option key={option} value={option}>
+                    {option.toLowerCase() === 'general practice' ? 'Generalist' : option}
+                  </option>
+                ))}
+              </>
+            )}
           </Select>
         </Field>
 
@@ -161,7 +234,7 @@ export function VisitForm({
             <option value="">Select a doctor</option>
             {bookingDoctors.map((doctor) => (
               <option key={doctor.id} value={doctor.id}>
-                {doctor.name} · {doctor.present ? 'Present' : 'Absent'}
+                {doctor.name}{!isRegular && (effectiveSpecialty === 'ALL' || !effectiveSpecialty) ? ` (${doctor.specialty})` : ''} · {doctor.present ? 'Present' : 'Absent'}
               </option>
             ))}
           </Select>
@@ -201,7 +274,12 @@ export function VisitForm({
         <InfoNote tone={slots.length ? 'blue' : 'danger'} icon={slots.length ? Info : CalendarCheck}>
           {slots.length ? (
             <>
-              {effectiveSpecialty} · {slots.length} available {slots.length === 1 ? 'slot' : 'slots'}:{' '}
+              {isRegular
+                ? 'Generalist'
+                : effectiveSpecialty === 'ALL'
+                ? selectedDoctor?.specialty || 'All specialties'
+                : effectiveSpecialty}{' '}
+              · {slots.length} available {slots.length === 1 ? 'slot' : 'slots'}:{' '}
               {slots.slice(0, 4).join(', ')}
               {slots.length > 4 ? '…' : '.'} Only available doctors and slots can be selected.
             </>

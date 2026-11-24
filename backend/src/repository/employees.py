@@ -1,4 +1,4 @@
-"""Employee (staff) persistence, including generic presence availability."""
+
 
 EMPLOYEE_SELECT = (
     'select e.employee_id, e.full_name, e.role as employee_role, e.email, e.phone, '
