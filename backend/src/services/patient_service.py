@@ -1,8 +1,25 @@
+import re
 from datetime import datetime
+
 from src.repository import patients as repo
 
 UNSET = object()
 _UPCOMING_STATUSES = {'upcoming', 'scheduled'}
+
+
+# normalization & business helpers (no validation)
+
+def _clean_str(value):
+    if value is None:
+        return None
+    text = ' '.join(value.split())
+    return text if text else None
+
+
+def _normalize_phone(value):
+    if value is None:
+        return None
+    return re.sub(r'[\s\-().]', '', value.strip())
 
 
 def _as_date(value):
@@ -22,14 +39,21 @@ def _find_duplicate(conn, full_name, phone, birth_date, exclude_id=None):
 
 def create_patient(conn, first_name, last_name, birth_date, phone, gender,
                    email=None, additional_info=None, emergency_contact=None):
-    full_name = f"{first_name.strip()} {last_name.strip()}"
+    full_name = f"{_clean_str(first_name)} {_clean_str(last_name)}"
+    phone = _normalize_phone(phone)
+    gender = _clean_str(gender).lower()
+    email = _clean_str(email)
+    if email:
+        email = email.lower()
+    additional_info = _clean_str(additional_info)
+    emergency_contact = _clean_str(emergency_contact)
 
     existing = _find_duplicate(conn, full_name, phone, birth_date)
     if existing:
         raise ValueError(f"Patient already exists (ID {existing['patient_id']})")
 
     new_id = repo.create_patient(
-        conn, full_name, birth_date, phone, gender.lower(),
+        conn, full_name, birth_date, phone, gender,
         email, additional_info, emergency_contact
     )
     if new_id is None:
@@ -45,14 +69,16 @@ def update_patient(conn, patient_id, first_name=UNSET, last_name=UNSET,
         return None
 
     old_first, _, old_last = current['full_name'].partition(' ')
-    new_first = old_first if first_name is UNSET else first_name.strip()
-    new_last = old_last if last_name is UNSET else last_name.strip()
+    new_first = old_first if first_name is UNSET else _clean_str(first_name)
+    new_last = old_last if last_name is UNSET else _clean_str(last_name)
     new_full_name = f"{new_first} {new_last}".strip()
 
     new_birth = current['birth_date'] if birth_date is UNSET else birth_date
-    new_phone = current['phone'] if phone is UNSET else phone
-    new_email = current.get('email') if email is UNSET else email
-    new_info = current.get('additional_info') if additional_info is UNSET else additional_info
+    new_phone = current['phone'] if phone is UNSET else _normalize_phone(phone)
+    new_email = current.get('email') if email is UNSET else _clean_str(email)
+    if new_email:
+        new_email = new_email.lower()
+    new_info = current.get('additional_info') if additional_info is UNSET else _clean_str(additional_info)
 
     if (new_full_name != current['full_name'] or new_phone != current['phone']
             or _as_date(new_birth) != _as_date(current['birth_date'])):
@@ -90,7 +116,7 @@ def get_patient_visits(conn, patient_id):
     }
 
 def search_patients(conn, query, limit=50):
-    q = query.strip()
+    q = _clean_str(query)
     if not q:
         return []
 
