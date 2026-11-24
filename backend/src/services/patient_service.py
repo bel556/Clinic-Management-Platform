@@ -103,6 +103,10 @@ def get_patient_info(conn, patient_id):
     return repo.get_patient_by_id(conn, patient_id)
 
 
+def get_all_patients(conn, limit=50, offset=0):
+    return repo.get_all_patients(conn, limit=limit, offset=offset) or []
+
+
 def get_patient_visits(conn, patient_id):
     patient = repo.get_patient_by_id(conn, patient_id)
     if patient is None:

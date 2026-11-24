@@ -1,7 +1,7 @@
 import mysql.connector
 from mysql.connector import pooling
 
-from config import (
+from src.database.config import (
     db_user,
     db_password,
     db_database,

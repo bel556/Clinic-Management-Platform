@@ -1,0 +1,101 @@
+from src.services.doctor_service import (
+    get_doctor_info,
+    search_doctors,
+    get_doctor_queue,
+    get_doctor_visits,
+    get_doctor_availability,
+    set_doctor_availability,
+)
+from src.schemas import DoctorSearch, DoctorAvailabilityUpdate
+from src.database.connection import get_connection
+from fastapi import Depends, APIRouter, status, HTTPException, Query
+from typing import Optional
+from datetime import date
+
+doctor_router = APIRouter()
+
+
+@doctor_router.get("/doctors/search")
+def search(
+    name: Optional[str] = Query(None),
+    specialty: Optional[str] = Query(None),
+    only_present: bool = Query(False),
+    conn=Depends(get_connection),
+):
+    results = search_doctors(conn, name=name, specialty=specialty, only_present=only_present)
+    if results is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch results",
+        )
+    return results
+
+
+@doctor_router.get("/doctors/{doctor_id}")
+def get_doctor(doctor_id: int, conn=Depends(get_connection)):
+    doctor = get_doctor_info(conn, doctor_id)
+    if doctor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found",
+        )
+    return doctor
+
+
+@doctor_router.get("/doctors/{doctor_id}/queue")
+def doctor_queue(doctor_id: int, conn=Depends(get_connection)):
+    queue = get_doctor_queue(conn, doctor_id)
+    if queue is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found",
+        )
+    return queue
+
+
+@doctor_router.get("/doctors/{doctor_id}/visits")
+def doctor_visits(
+    doctor_id: int,
+    visit_day: Optional[date] = Query(None),
+    conn=Depends(get_connection),
+):
+    visits = get_doctor_visits(conn, doctor_id, visit_day=visit_day)
+    if visits is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found",
+        )
+    return visits
+
+
+@doctor_router.get("/doctors/{doctor_id}/availability")
+def doctor_availability(doctor_id: int, conn=Depends(get_connection)):
+    availability = get_doctor_availability(conn, doctor_id)
+    if availability is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor not found",
+        )
+    return availability
+
+
+@doctor_router.patch("/doctors/{doctor_id}/availability")
+def update_availability(
+    doctor_id: int,
+    payload: DoctorAvailabilityUpdate,
+    conn=Depends(get_connection),
+):
+    try:
+        updated = set_doctor_availability(conn, doctor_id, payload.status)
+        if updated is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Doctor not found",
+            )
+        return updated
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+

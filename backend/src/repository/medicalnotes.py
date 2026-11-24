@@ -39,3 +39,12 @@ def get_medical_notes_by_visit_id(conn, visit_id):
             'order by note_id', (visit_id,)
         )
         return cur.fetchall()
+
+
+def get_medical_note_by_id(conn, note_id):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute(
+            'select * from MEDICALNOTE '
+            'where note_id = %s', (note_id,)
+        )
+        return cur.fetchone()

@@ -2,7 +2,7 @@ from src.repository import visits
 from src.repository import medicalnotes
 from src.repository import patients
 from src.repository import doctors
-import notification_service as notif_service 
+import src.services.notification_service as notif_service 
 
 
 # ---------- Helpers ----------
@@ -15,12 +15,9 @@ def _remove_from_queue(conn, visit_id, must_exist=True):
         if must_exist:
             raise ValueError(f'Visit {visit_id} is not in the queue')
         return False  
-        
-    doctor_id = queue_info['doctor_id']
-    removed_position = queue_info['position']
     visits.delete_from_queue(conn, visit_id)
     
-    visits.decrease_queue_positions(conn, doctor_id, removed_position=removed_position)
+   
     return True
 
 
@@ -29,20 +26,10 @@ def _remove_from_queue(conn, visit_id, must_exist=True):
 def create_visit_if_not_exists(conn, patient_id, doctor_id, visit_date,
                                visit_type, status='scheduled'):
     """Create a visit only if an identical non-cancelled one does not exist."""
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                'select visit_id from VISIT '
-                'where patient_id = %s and doctor_id = %s '
-                'and visit_date = %s and visit_type = %s '
-                'and status != %s',
-                (patient_id, doctor_id, visit_date, visit_type, 'cancelled')
-            )
-            if cur.fetchone():
-                return None
-    except Exception:
+   
+    if visits.get_visits_with_doctor_cancelled(conn,patient_id,doctor_id,visit_date,visit_type) is None :
         return None
-
+    
     visit_id = visits.create_visit(
         conn, patient_id, doctor_id, visit_date, visit_type, status=status
     )
@@ -69,7 +56,7 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
 
     try:
         # 1. Date Change
-        if visit_date is not None and visit_date != existing['visit_date']:
+        if visit_date is not None and visit_date != existing['visit_date'] and visit_date > existing['visit_date']:
             if visits.modify_visit_date(conn, visit_id, visit_date):
                 updates_made = True
                 _remove_from_queue(conn, visit_id, must_exist=False)
@@ -88,53 +75,32 @@ def modify_visit_info(conn, visit_id, visit_date=None, doctor_id=None,
                 updates_made = True
                 
                 if status == 'cancelled':
-                    _remove_from_queue(conn, visit_id)
+                    _remove_from_queue(conn, visit_id, must_exist=False)
                 
-                try:
-                    notif_service.create_notification(
-                        conn, visit_id, 
-                        f'Status of Visit {visit_id} has been changed to {status}.'
-                    )
-                except Exception:
-                    pass
+                    try:
+                       notif_service.create_notification(
+                         conn, visit_id, 
+                         f'Status of Visit {visit_id} has been changed to {status}.'
+                     )
+                    except Exception:
+                      pass
 
         # 3. Doctor Change
         if doctor_id is not None and doctor_id != existing['doctor_id']:
             if visits.modify_visit_doctor(conn, visit_id, doctor_id):
                 updates_made = True
+             
                 
-                doctor = doctors.get_doctor_by_id(conn, doctor_id)
-                doctor_name = doctor['full_name'] if doctor else f"ID {doctor_id}"
-                
-                try:
-                    notif_service.create_notification(
-                        conn, visit_id, 
-                        f'Doctor for Visit {visit_id} has been changed to Dr. {doctor_name}.'
-                    )
-                except Exception:
-                    pass
 
         # 4. Visit Type Change
         if visit_type is not None and visit_type != existing['visit_type']:
             if visits.modify_visit_type(conn, visit_id, visit_type):
                 updates_made = True
-                try:
-                    notif_service.create_notification(
-                        conn, visit_id, 
-                        f'Type of Visit {visit_id} has been changed to {visit_type}.'
-                    )
-                except Exception:
-                    pass
+                
 
         if not updates_made:
             return existing
-
-        # Handle the deletion if it was cancelled
-        if status == 'cancelled':
-            deleted = visits.delete_visit(conn, visit_id)
-            if deleted:
-                return {'visit_id': visit_id, 'status': 'cancelled', 'deleted': True}
-            return None # Deletion failed
+    
 
         return visits.get_visit_by_id(conn, visit_id)
         

@@ -251,3 +251,20 @@ def delete_from_queue(conn, visit_id):
     except Exception:
         conn.rollback()
         return False
+
+
+def get_visits_with_doctor_cancelled(conn,patient_id,doctor_id,visit_date,visit_type):
+     try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'select visit_id from VISIT '
+                    'where patient_id = %s and doctor_id = %s '
+                    'and visit_date = %s and visit_type = %s '
+                    'and status != %s',
+                    (patient_id, doctor_id, visit_date, visit_type, 'cancelled')
+                )
+                if cur.fetchone():
+                    return None
+                return True
+     except Exception:
+        return None

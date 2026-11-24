@@ -47,6 +47,50 @@ def get_doctors_by_name(conn, name):
         return cur.fetchall()
 
 
+def get_all_doctors(conn):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute(
+            DOCTOR_SELECT +
+            'order by e.full_name'
+        )
+        return cur.fetchall()
+
+
+def get_doctor_availability(conn, doctor_id):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute(
+            'select d.doctor_id, e.full_name, d.specialty, '
+            'a.start_day, a.end_day, a.status as availability_status '
+            'from DOCTOR d '
+            'join EMPLOYEE e on e.employee_id = d.employee_id '
+            'left join EMPLOYEEAVAILABILITY a on a.employee_id = e.employee_id '
+            'where d.doctor_id = %s', (doctor_id,)
+        )
+        return cur.fetchone()
+
+
+def update_doctor_availability(conn, doctor_id, status):
+    try:
+        with conn.cursor() as cur:
+            cur.execute('select employee_id from DOCTOR where doctor_id = %s', (doctor_id,))
+            doc = cur.fetchone()
+            if not doc:
+                return False
+            emp_id = doc[0]
+
+            cur.execute(
+                'insert into EMPLOYEEAVAILABILITY (employee_id, start_day, end_day, status) '
+                "values (%s, 'monday', 'friday', %s) "
+                'on duplicate key update status = %s',
+                (emp_id, status, status)
+            )
+            conn.commit()
+            return True
+    except Exception:
+        conn.rollback()
+        return False
+
+
 def get_doctor_queue(conn, doctor_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(

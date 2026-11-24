@@ -138,14 +138,25 @@ def get_patients_by_phone(conn, phone, limit: int = 50):
         return cur.fetchall()
 
 
+def get_all_patients(conn, limit: int = 50, offset: int = 0):
+    with conn.cursor(dictionary=True) as cur:
+        cur.execute(
+            'select * from PATIENT '
+            'order by full_name '
+            'limit %s offset %s', (limit, offset)
+        )
+        return cur.fetchall()
+
+
 def get_patient_visits(conn, patient_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
             'select v.visit_id, v.visit_date, v.financial_status, v.status, '
-            'd.doctor_id, e.full_name as doctor_name, d.specialty '
+            'd.doctor_id, e.full_name as doctor_name, d.specialty, q.position '
             'from VISIT v '
             'join DOCTOR d on d.doctor_id = v.doctor_id '
-            'join EMPLOYEE e on e.employee_id = d.employee_id '
+            'join EMPLOYEE e on e.employee_id = d.employee_id ' \
+            'left join QUEUE q on q.visit_id = v.visit_id '
             'where v.patient_id = %s '
             'order by v.visit_date desc', (patient_id,)
         )
