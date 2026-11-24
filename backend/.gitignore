@@ -4,6 +4,7 @@
 # Python cache
 __pycache__/
 *.py[cod]
+*.pyc
 
 # Environment variables and secrets
 .env
@@ -16,3 +17,7 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Ignore my local testing folder
+local_tests/
+.venv_testing/
