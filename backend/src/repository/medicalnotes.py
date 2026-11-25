@@ -1,3 +1,4 @@
+# insert a new medical note for a visit and return its ID
 def create_medical_note(conn, visit_id, content, is_draft=False):
     try:
         with conn.cursor() as cur:
@@ -5,14 +6,14 @@ def create_medical_note(conn, visit_id, content, is_draft=False):
                 'insert into MEDICALNOTE(visit_id,content,is_draft) '
                 'values(%s,%s,%s)', (visit_id, content, 1 if is_draft else 0)
             )
-            conn.commit()
-            return cur.lastrowid
-
+        conn.commit()
+        return cur.lastrowid
     except Exception:
         conn.rollback()
         return None
 
 
+# update an existing medical note's content and optional draft status
 def modify_medical_note(conn, note_id, new_content, is_draft=None):
     try:
         with conn.cursor() as cur:
@@ -26,19 +27,19 @@ def modify_medical_note(conn, note_id, new_content, is_draft=None):
                 cur.execute(
                     'update MEDICALNOTE '
                     'set content = %s, is_draft = %s '
-                    'where note_id = %s',
-                    (new_content, 1 if is_draft else 0, note_id)
+                    'where note_id = %s', (new_content, 1 if is_draft else 0, note_id)
                 )
             if cur.rowcount == 0:
                 conn.rollback()
                 return False
-            conn.commit()
-            return True
+        conn.commit()
+        return True
     except Exception:
         conn.rollback()
         return False
 
 
+# return medical notes for a visit ordered by draft status and creation time
 def get_medical_notes_by_visit_id(conn, visit_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
@@ -49,6 +50,7 @@ def get_medical_notes_by_visit_id(conn, visit_id):
         return cur.fetchall()
 
 
+# fetch a single medical note record by note ID
 def get_medical_note_by_id(conn, note_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(

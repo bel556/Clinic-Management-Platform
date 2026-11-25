@@ -1,5 +1,3 @@
-
-
 EMPLOYEE_SELECT = (
     'select e.employee_id, e.full_name, e.role as employee_role, e.email, e.phone, '
     'o.room_no, a.start_day, a.end_day, a.status as availability_status '
@@ -8,7 +6,7 @@ EMPLOYEE_SELECT = (
     'left join EMPLOYEEAVAILABILITY a on a.employee_id = e.employee_id '
 )
 
-
+# return all employees optionally filtered by role ordered by full name
 def get_all_employees(conn, role=None):
     query = EMPLOYEE_SELECT
     params = []
@@ -20,24 +18,22 @@ def get_all_employees(conn, role=None):
         cur.execute(query, tuple(params))
         return cur.fetchall()
 
-
+# fetch a single employee record by employee ID
 def get_employee_by_id(conn, employee_id):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(EMPLOYEE_SELECT + 'where e.employee_id = %s', (employee_id,))
         return cur.fetchone()
 
-
+# insert or update a weekday availability status for an employee in EMPLOYEEAVAILABILITY
 def update_employee_availability(conn, employee_id, status):
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                'insert into EMPLOYEEAVAILABILITY (employee_id, start_day, end_day, status) '
-                "values (%s, 'monday', 'friday', %s) "
-                'on duplicate key update status = %s',
-                (employee_id, status, status)
-            )
-            conn.commit()
-            return True
+            cur.execute('insert into EMPLOYEEAVAILABILITY (employee_id, start_day, end_day, status) '
+                        "values (%s, 'monday', 'friday', %s) "
+                        'on duplicate key update status = %s', (employee_id, status, status)
+                        )
+        conn.commit()
+        return True
     except Exception:
         conn.rollback()
         return False

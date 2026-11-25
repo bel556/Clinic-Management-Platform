@@ -15,7 +15,7 @@ from fastapi import Depends, APIRouter, status, HTTPException, Query
 
 patient_router = APIRouter()
 
-
+# return a paginated list of patients ordered by name or recent creation time
 @patient_router.get("/patients")
 def list_patients(
     limit: int = Query(50, ge=1, le=200),
@@ -26,6 +26,7 @@ def list_patients(
     return get_all_patients(conn, limit=limit, offset=offset, order=order)
 
 
+# search patients matching the query string
 @patient_router.get("/patients/search/{query}")
 def search(query: str, conn=Depends(get_connection)):
     results = search_patients(conn, query)
@@ -37,6 +38,7 @@ def search(query: str, conn=Depends(get_connection)):
     return results
 
 
+# return an overview of a patient by patient ID
 @patient_router.get("/patients/{patient_id}/overview")
 def patient_overview(patient_id: int, conn=Depends(get_connection)):
     data = get_patient_overview(conn, patient_id)
@@ -47,7 +49,7 @@ def patient_overview(patient_id: int, conn=Depends(get_connection)):
         )
     return data
 
-
+# fetch a single patient record by patient ID
 @patient_router.get("/patients/{patient_id}")
 def get_patient(patient_id: int, conn=Depends(get_connection)):
     patient = get_patient_info(conn, patient_id)
@@ -58,7 +60,7 @@ def get_patient(patient_id: int, conn=Depends(get_connection)):
         )
     return patient
 
-
+# return visits for a patient by patient ID
 @patient_router.get("/patients/{patient_id}/visits")
 def patient_visits(patient_id: int, conn=Depends(get_connection)):
     visits = get_patient_visits(conn, patient_id)
@@ -69,7 +71,7 @@ def patient_visits(patient_id: int, conn=Depends(get_connection)):
         )
     return visits
 
-
+# create a new patient record
 @patient_router.post("/patients", status_code=status.HTTP_201_CREATED)
 def create(patient: PatientCreate, conn=Depends(get_connection)):
     try:
@@ -99,7 +101,7 @@ def create(patient: PatientCreate, conn=Depends(get_connection)):
         )
     return new_patient
 
-
+# update an existing patient record by patient ID
 @patient_router.patch("/patients/{patient_id}")
 def update(patient_id: int, patient: PatientUpdate, conn=Depends(get_connection)):
     try:
@@ -112,8 +114,12 @@ def update(patient_id: int, patient: PatientUpdate, conn=Depends(get_connection)
             phone=patient.phone if patient.phone is not None else UNSET,
             email=patient.email if patient.email is not None else UNSET,
             gender=patient.gender if patient.gender is not None else UNSET,
-            additional_info=patient.additional_info if patient.additional_info is not None else UNSET,
-            emergency_contact=patient.emergency_contact if patient.emergency_contact is not None else UNSET,
+            additional_info=patient.additional_info
+            if patient.additional_info is not None
+            else UNSET,
+            emergency_contact=patient.emergency_contact
+            if patient.emergency_contact is not None
+            else UNSET,
             blood_type=patient.blood_type if patient.blood_type is not None else UNSET,
             allergies=patient.allergies if patient.allergies is not None else UNSET,
             conditions=patient.conditions if patient.conditions is not None else UNSET,
@@ -135,7 +141,7 @@ def update(patient_id: int, patient: PatientUpdate, conn=Depends(get_connection)
         )
     return updated
 
-
+# delete a patient record by patient ID
 @patient_router.delete("/patients/{patient_id}")
 def delete(patient_id: int, conn=Depends(get_connection)):
     try:

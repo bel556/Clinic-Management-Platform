@@ -12,6 +12,7 @@ NOTIFICATION_SELECT = (
 )
 
 
+# insert a new notification for a visit and return its ID
 def create_notification(conn, visit_id, message):
     try:
         with conn.cursor() as cur:
@@ -19,14 +20,14 @@ def create_notification(conn, visit_id, message):
                 'insert into NOTIFICATION(visit_id,message) '
                 'values(%s,%s)', (visit_id, message)
             )
-            conn.commit()
-            return cur.lastrowid
-
+        conn.commit()
+        return cur.lastrowid
     except Exception:
         conn.rollback()
         return None
 
 
+# delete a notification by ID and return whether a row was removed
 def delete_notification(conn, notification_id):
     try:
         with conn.cursor() as cur:
@@ -37,13 +38,14 @@ def delete_notification(conn, notification_id):
             if cur.rowcount == 0:
                 conn.rollback()
                 return False
-            conn.commit()
-            return True
+        conn.commit()
+        return True
     except Exception:
         conn.rollback()
         return False
 
 
+# mark a notification as read by ID and return whether a row was updated
 def mark_notification_read(conn, notification_id):
     try:
         with conn.cursor() as cur:
@@ -55,33 +57,32 @@ def mark_notification_read(conn, notification_id):
             if cur.rowcount == 0:
                 conn.rollback()
                 return False
-            conn.commit()
-            return True
+        conn.commit()
+        return True
     except Exception:
         conn.rollback()
         return False
 
 
+# fetch a single notification record with visit, patient, and doctor details by ID
 def get_notification_by_id(conn, notification_id):
     with conn.cursor(dictionary=True) as cur:
-        cur.execute(
-            NOTIFICATION_SELECT + 'where n.notification_id = %s',
-            (notification_id,)
-        )
+        cur.execute(NOTIFICATION_SELECT + 'where n.notification_id = %s', (notification_id,))
         return cur.fetchone()
 
 
+# return all notifications ordered by newest creation time and ID
 def get_all_notifications(conn):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(NOTIFICATION_SELECT + 'order by n.created_at desc, n.notification_id desc')
         return cur.fetchall()
 
 
+# return unread notifications ordered by newest creation time and ID
 def get_unread_notifications(conn):
     with conn.cursor(dictionary=True) as cur:
         cur.execute(
-            NOTIFICATION_SELECT +
-            'where n.is_read = false '
+            NOTIFICATION_SELECT + 'where n.is_read = false '
             'order by n.created_at desc, n.notification_id desc'
         )
         return cur.fetchall()
