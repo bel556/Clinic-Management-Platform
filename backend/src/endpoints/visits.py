@@ -20,7 +20,7 @@ from datetime import date
 
 visit_router = APIRouter()
 
-
+# return visits for a given patient ID
 @visit_router.get("/visits/by-patient/{patient_id}")
 def visits_by_patient(patient_id: int, conn=Depends(get_connection)):
     visits = search_visits_by_patient(conn, patient_id)
@@ -32,6 +32,7 @@ def visits_by_patient(patient_id: int, conn=Depends(get_connection)):
     return visits
 
 
+# return visits matching a status and optional day
 @visit_router.get("/visits/by-status/{visit_status}")
 def visits_by_status(
     visit_status: str,
@@ -41,16 +42,19 @@ def visits_by_status(
     return search_visits_by_status(conn, visit_status, visit_day=visit_day)
 
 
+# return visits scheduled for a specific date
 @visit_router.get("/visits/by-date/{visit_day}")
 def visits_by_date(visit_day: date, conn=Depends(get_connection)):
     return search_visits_by_date(conn, visit_day)
 
 
+# return visits matching a visit type
 @visit_router.get("/visits/by-type/{visit_type}")
 def visits_by_type(visit_type: str, conn=Depends(get_connection)):
     return search_visits_by_type(conn, visit_type)
 
 
+# fetch a single visit record by visit ID
 @visit_router.get("/visits/{visit_id}")
 def get_single_visit(visit_id: int, conn=Depends(get_connection)):
     visit = get_visit(conn, visit_id)
@@ -61,7 +65,7 @@ def get_single_visit(visit_id: int, conn=Depends(get_connection)):
         )
     return visit
 
-
+# return queue information for a visit by visit ID
 @visit_router.get("/visits/{visit_id}/queue")
 def visit_queue_number(visit_id: int, conn=Depends(get_connection)):
     queue_info = get_visit_queue_number(conn, visit_id)
@@ -72,7 +76,7 @@ def visit_queue_number(visit_id: int, conn=Depends(get_connection)):
         )
     return queue_info
 
-
+# return consultation details for a visit by visit ID
 @visit_router.get("/visits/{visit_id}/consultation")
 def visit_consultation(visit_id: int, conn=Depends(get_connection)):
     data = get_consultation(conn, visit_id)
@@ -83,9 +87,13 @@ def visit_consultation(visit_id: int, conn=Depends(get_connection)):
         )
     return data
 
-
+# return detailed visit information for a visit and doctor ID
 @visit_router.get("/visits/{visit_id}/details")
-def visit_details(visit_id: int, doctor_id: int = Query(...), conn=Depends(get_connection)):
+def visit_details(
+    visit_id: int,
+    doctor_id: int = Query(...),
+    conn=Depends(get_connection),
+):
     details = get_visit_details_for_doctor(conn, visit_id, doctor_id)
     if details is None:
         raise HTTPException(
@@ -94,7 +102,7 @@ def visit_details(visit_id: int, doctor_id: int = Query(...), conn=Depends(get_c
         )
     return details
 
-
+# create a new visit if no conflicting visit exists
 @visit_router.post("/visits", status_code=status.HTTP_201_CREATED)
 def create(visit: VisitCreate, conn=Depends(get_connection)):
     new_visit = create_visit_if_not_exists(
@@ -115,7 +123,7 @@ def create(visit: VisitCreate, conn=Depends(get_connection)):
         )
     return new_visit
 
-
+# update details for an existing visit by visit ID
 @visit_router.patch("/visits/{visit_id}")
 def modify(visit_id: int, visit: VisitModify, conn=Depends(get_connection)):
     updated = modify_visit_info(
@@ -136,7 +144,7 @@ def modify(visit_id: int, visit: VisitModify, conn=Depends(get_connection)):
         )
     return updated
 
-
+# cancel an existing visit by visit ID
 @visit_router.patch("/visits/{visit_id}/cancel")
 def cancel(visit_id: int, conn=Depends(get_connection)):
     result = cancel_visit(conn, visit_id)

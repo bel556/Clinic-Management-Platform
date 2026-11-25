@@ -6,6 +6,7 @@ from src.services import notification_service
 notification_router = APIRouter(tags=["Notifications"])
 
 
+# return notifications optionally filtered to unread items
 @notification_router.get("/notifications")
 def list_notifications(
     unread_only: bool = Query(False),
@@ -21,6 +22,7 @@ def list_notifications(
         )
 
 
+# create a new notification for a visit
 @notification_router.post("/notifications", status_code=status.HTTP_201_CREATED)
 def create_notification(
     payload: NotificationCreate,
@@ -48,6 +50,7 @@ def create_notification(
         )
 
 
+# mark a single notification as read by ID
 @notification_router.patch("/notifications/{notification_id}/read")
 def mark_read(
     notification_id: int,
@@ -68,6 +71,7 @@ def mark_read(
         )
 
 
+# mark all notifications as read
 @notification_router.patch("/notifications/read-all")
 def mark_all_read(conn=Depends(get_connection)):
     try:
@@ -80,6 +84,7 @@ def mark_all_read(conn=Depends(get_connection)):
         )
 
 
+# delete a single notification by ID
 @notification_router.delete("/notifications/{notification_id}")
 def delete_notification(
     notification_id: int,

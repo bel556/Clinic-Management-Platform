@@ -6,6 +6,7 @@ from src.services import consultation_service
 consultation_router = APIRouter(tags=["Consultation & Medical Notes"])
 
 
+# return all medical notes for a given visit
 @consultation_router.get("/visits/{visit_id}/notes")
 def get_notes_for_visit(
     visit_id: int,
@@ -20,6 +21,7 @@ def get_notes_for_visit(
     return notes
 
 
+# create a new medical note for a given visit
 @consultation_router.post("/visits/{visit_id}/notes", status_code=status.HTTP_201_CREATED)
 def create_note_for_visit(
     visit_id: int,
@@ -48,6 +50,7 @@ def create_note_for_visit(
         )
 
 
+# update an existing medical note by ID
 @consultation_router.patch("/medical-notes/{note_id}")
 def update_note(
     note_id: int,
@@ -56,8 +59,12 @@ def update_note(
 ):
     try:
         updated = consultation_service.update_medical_note(
-            conn, note_id, payload.content,
-            is_draft=payload.is_draft if payload.is_draft is not None else consultation_service.UNSET,
+            conn,
+            note_id,
+            payload.content,
+            is_draft=payload.is_draft
+            if payload.is_draft is not None
+            else consultation_service.UNSET,
         )
         if updated is None:
             raise HTTPException(
